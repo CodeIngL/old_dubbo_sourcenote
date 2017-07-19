@@ -18,8 +18,7 @@
 
 ### NettyCodecAdapter
 ---
-这个是代码中已经说明，是编码解码器的适配。从代码来看，熟悉netty的童鞋一定会关注重点pipeline的设置。pipeline总共被设置了三个ChannelHandler，这里ChannelHandler
-是netty框架的接口，而不是dubbo的抽象接口
+这个是代码中已经说明，是编码解码器的适配。从代码来看，熟悉netty的童鞋一定会关注重点pipeline的设置。pipeline总共被设置了三个ChannelHandler。其中NettyCodecAdapter包装了两个Handler，顾名思义这个Handler跟解码编码器相关。
 
 #### InternalDecoder
 ---

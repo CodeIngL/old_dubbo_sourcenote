@@ -1,9 +1,9 @@
 ## dubbo真正的导出
-上一篇，我们详细的讲述了dubbo服务的导出，细心的读者，注意到其实都是元数据的生成，并没有涉及真正导出。上一篇结尾，我们已经提到了真正的导出，这一篇我们讲详细的叙述整个过程。
+上一篇，我们详细的讲述了dubbo服务的导出过程。阅读细心的读者，可以注意到整个说明的过程,其实都是元数据的生成(反应在代码中就是URL以及其内部属性map)，真正的网络交互导出代码并没有涉及。上一篇结尾，我们已经提到了真正的导出，这一篇我们讲详细的叙述整个过程。
 
 ### dubbo导出代码
 ---
-我们先贴出出上一篇结尾最后说道的代码,增加下印象:
+我们先贴出在上一篇结尾最后说道的代码,来增加下读者印象:
 
 	Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
 
@@ -15,8 +15,14 @@
 
 - 使用Proxy$Adaptive将获得的Invoker导出实现服务暴露
 
+这里我们需要说明下各个入参的含义，**getInvoker()**
 
-### 导出之getInvoker
+- ref，实际服务类
+- interfaceClass，服务接口类
+- url（第三个参数），这里注册元信息，将配置元信息转换为一个键值对加入注册元信息中一起导出。
+
+
+### 导出之getInvoker操作
 ---
 Invoker是dubbo中非常重要的一个概念。我们看一下上面的实际代码:
 

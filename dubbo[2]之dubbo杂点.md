@@ -1,9 +1,11 @@
 ##dubbo 杂点
-这里描述dubbo相关的知识点，是外层，比较重要的知识点，建议阅读的时候，使用源码对应，源码已加上大量丰富的注解。[dubbo源码地址](http://192.168.110.114/laihj/dubbo "dubbo源码地址")。
+dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我们留的疑问我们也将在该篇文章中一一解答。
+
+虽然是杂点，但是只是名字上的而已，知识点还是比较重要的，这里会引出一个jdk中存在的一个概念。阅读的时候，读者应该尽量参考源码，[dubbo源码地址](http://192.168.110.114/laihj/dubbo "dubbo源码地址")。源码加上了相关的注释。
 
 ###dubbo复杂配置类
 ---
-在dubbo配置一文，我们已经向读者介绍了什么是**复杂配置类**，这里我们以服务提供者的角度来说明:
+**dubbo配置**一文，我们已经向读者介绍了什么是**复杂配置类**，这里我们再次从服务提供者的角度来说明，消费方类似:
 
 - ServiceConfig（服务方的入口：**复杂配置类**）
 	- 提供者必须使用的复杂配置类
@@ -11,19 +13,24 @@
 	
 			    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
-在上一篇文章中，对于上面的代码，我们让读者迅速忽略掉。而现在，正是我们本文特别需要关注的地方。
+上一篇文章中，对于上面的代码，我们让读者留有印象即可，而现在正是我们本文议论的出发点，本文也是围绕着该行代码展开。
 
 ### 超级重要的ExtensionLoader类
 ---
-上面代码中我们注意到这样一个类**ExtensionLoader**，在dubbo框架中，这个类地位举足轻重，如同ApplicationContext in
- Spring 在这里，我给它取个名字:**扩展加载器类**。
+上面一行代码中我们注意到这样一个类**ExtensionLoader**。 在dubbo框架中，这个类地位举足轻重，dubbo也是依靠该类进行扩张。在这里，我给它取个名字:**扩展加载器类**。
 
 >**tip**: ***阅读该类务必对照源码，源码已加丰富注释，促进理解***
 
+首先我们先贴出类声明，类声明结构如下:
+
+	public class ExtensionLoader<T>{...}
+
+从声明结构我们可以看出，其带有泛型结构T，这里称之为T类型扩展加载器。
+
 ####重点方法**getExtensionLoader**
 ---
-上面代码中，我们也能看到该方法，这是类**ExtensionLoader**的一个非常重要的方法。
-我们将对其详细深究。
+上述代码里，我们看到了该方法。这是**扩展加载器类**的一个非常重要的方法。
+我们将对其详细深究，首先先贴出其实现代码。
 	
 	 public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         
@@ -39,17 +46,19 @@
         return loader;
     }
 
-上述代码就是**getExtensionLoader**内部代码。  
-逻辑很简单，校验入口参数，尝试缓存操作。重点是**EXTENSION_LOADERS**。  
+以上就是**getExtensionLoader**内部实现代码。
+同行人一看就知道是缓存操作，重点**EXTENSION_LOADERS**这个缓存结构。  
 
-**EXTENSION_LOADERS**是**类属性**，说明如下。
+**EXTENSION_LOADERS**是**类属性**，说明如下:
 
 	//全局，缓存了interface（这个class特指interface），与ExtensionLoader（interface的特殊实现类）的映射
     ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<>();
+也是就是说对于泛型T，**EXTENSION_LOADERS**结构缓存了T和T类型的扩展加载器。同时这个T必须是接口类型。
 
 ####重要方法**getAdaptiveExtension**
 --- 
-回到上面的**复杂类属性**，我们来看另一个方法**getAdaptiveExtension**，该方法也是非常的重要。
+重新回顾最开始的一行代码，我们可以看到当获取到特定（T为Protocol.class）的扩展加载器后立马调用
+**getAdaptiveExtension**方法。该方法也是扩展加载器中一个非常的重要的方法。
 
 	public T getAdaptiveExtension() {
         Object instance = cachedAdaptiveInstance.get();
@@ -73,12 +82,15 @@
         }
         return (T) instance;
     }
-对于该段熟悉spring源码的童鞋是否感觉十分的熟悉。逻辑也是十分的简单，尝试从缓存中取，没有则构建缓存。  
-值得关注的就只有字段**cachedAdaptiveInstance**，和方法**createAdaptiveExtension**    
+同样读者依然可以很明显的看出操作缓存的逻辑。因此我们需要的关注也就很明显了
 
-- 字段 **cachedAdaptiveInstance**是**对象属性**，先不做详细介绍，读者只要记住这是一个缓存属性
+1. 一是缓存结构**cachedAdaptiveInstance**，
 
-- 方法	**createAdaptiveExtension**，代码如下:
+2. 二是新建缓存对象的方法**createAdaptiveExtension**    
+
+对于**cachedAdaptiveInstance**它是**对象属性**，先不做详细介绍，读者只要记住这是一个缓存属性。
+
+对于获得缓存对象的方法**createAdaptiveExtension**，代码如下:
 
 		T createAdaptiveExtension() {
 	            return injectExtension((T) getAdaptiveExtensionClass().newInstance());
@@ -97,11 +109,11 @@
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
-代码也是十分简短的，自然我们需要的关注点也就被委托给内部调用方法了，我们继续看。
+代码也是十分简短的，这里我们需要关注的有两点，一是方法的内部实现，二是方法返回值，返回值我们可以看出是返回类类型，因而一行代码中的**newInstance**的代码实现自然可以忽略了。现在我们把关注点转移到方法内部实现。
 	
 ####超级重点方法**getExtensionClasses**
 ---
-该函数是一个超级重要的方法，被广泛应用其他方法中。完成了dubbo配置的启动，代码如下
+该函数是一个超级重要的方法，在上面方法内部实现调用，实际上也被广泛在其他方法中调用。该方法完成了dubbo配置类的加载，实现了对泛型T结构的实现类的类加载和管理，代码如下:
 
 	 Map<String, Class<?>> getExtensionClasses() {
         Map<String, Class<?>> classes = cachedClasses.get();
@@ -116,12 +128,11 @@
         }
         return classes;
     }
-这个方法是私有的，再次强调该方法是很多操作的**基石**。 逻辑也是一样的，尝试从缓存中取，没有则构建缓存。 
-值得关注的就只有字段**cachedClasses**，和方法**loadExtensionClasses** 
+这个方法是私有的，再次强调该方法是很多操作的**基石**。 逻辑也是缓存操作，同上我们需要关注缓存结构**cachedClasses**，和获得缓存对象的方法**loadExtensionClasses** 
 
 - 字段 **cachedClasses**是**对象属性**，跟之前**cachedAdaptiveInstance**一样，读者先记住是缓存属性
 
-- 方法	**loadExtensionClasses**，其功能主要实现加载相关实现类，完成对象属性的设置。
+- 方法	**loadExtensionClasses**，其功能主要实现加载相关实现类，新建为缓存对象
 
 ####超级重点方法**loadExtensionClasses**
 --- 
