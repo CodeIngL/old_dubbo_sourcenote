@@ -136,193 +136,195 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 ####超级重点方法**loadExtensionClasses**
 --- 
-该方法涉及代码比较多，嵌套比较深，这里我们不贴出说明，读者请依照源码跟进。  
-我们采用文章描述来介绍其功能：
+	private Map<String, Class<?>> loadExtensionClasses() {
+        
+		/*
+		...省略部分代码
+		获得具体T类型（type）上的@SPI注解，并尝试
+		完成缓存属性**cachedDefaulName**值的设置，其值为@SPI的value值
+		*/
 
-1. 获取type上的@SPI注解，完成缓存属性**cachedDefaulName**值的设置，其值为@SPI的value值（非空串，不含分隔符‘，’）
-	1. type是新建ExtensionLoader时，对应的泛型T
+        Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
+        loadFile(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
+        loadFile(extensionClasses, DUBBO_DIRECTORY);
+        loadFile(extensionClasses, SERVICES_DIRECTORY);
+        return extensionClasses;
+    }
+以上是缩减的代码，省略的代码不是很重要，但完成了一个缓存属性的设置，重点是三个loadFile的调用。
+首先loadFile的第二个参数，也就是配置文件路径为
 
-2. 解析所有jar包中的资源文件，文件路径依次为
-	1. **"META-INF/dubbo/internal/"+type.getName()**
-	2. **"META-INF/dubbo/"+type.getName()**
-	3. **"META-INF/services/"+type.getName()**
+- 所有jar包中的资源文件，文件路径:
+	1. **"META-INF/dubbo/internal/"+泛型T的具体实现的全类名**
+	2. **"META-INF/dubbo/"+泛型T的具体实现的全类名**
+	3. **"META-INF/services/"+泛型T的具体实现的全类名**
 
-对配置处理是较复杂的操作，本质上是kv（k-->name；v-->类全称）的解析，解析处理中，**最重要**的是完成了ExtensionLoader<T>该扩展加载器，几个**重要缓存对象属性**的设置，这里我们以文字的形式详细描述下：
+> loadfile方法内部做了很多操作，总体是完成了配置文件中的内容，到内存缓存属性的生成和设置。我们接下来以简要的文字描述其功能。
 
-- 对每一个kv对的v进行反射生成类类型
-	- **tip**:v对应类型必须实现type接口
-- 对带有注解**@Adaptive**的类类型，将**cachedAdaptiveClass**设置为该类型
-	- **tip**:v的类型（所有符合的资源文件中的kv），只允许一个带有**@Aaptive**的实现
-- 对不含**@Adaptive**的类型，但其构造函数存在（参数只有T类型）
-	- 这些v的类型被加入到属性**cachedWrapperClasses**中
-- 普通的v类型
-	- 判断v类型是否有**@Activate**，对于含有注解的将其name，和类型注解加入属性**cachedActivates**中
-		- **tip**:k可以代表多个名字，比如k=aa,bb,cc。那么**cachedActivates**中指name的是第一项aa
-		- **tip**:k也可以不存在，那么会尝试生成
-			- v类型上注解Extension的value值，如果value是空串，就是下面的小写名
-			- 没有注解则是小写名：ex，type=Inovker，v=SimpleInovker。小写名等价于simple
-	- 将v，name设置进cachedNames中
-		- name也是有多个名字所有情况下的第一个
-	- 返回name，v类型组成map
-		- 这个name多个名字会变成多个key。
-		- 这个map会被设置进cachedClasses中
-			- key是name，value是v
-				
-#### 小结
+####loadFile的逻辑
+---
+本质是kv（k-->name；v-->类全称）的解析，目的是为了完成对**T类型扩展加载器**，几个**重要缓存对象属性**的设置，这里我们以文字的形式详细描述下：
+
+- 对kv对中的v进行反射生成类类型，v必须是T类型的实现类
+
+对T的实现类带有注解@Adaptive的处理:
+
+	1. 将cachedAdaptiveClass设置为该类型
+	2. n次loadFile的调用，对应T具体类型，只允许一个带有**@Aaptive**的实现
+	3. dubbo中默认只有AdaptiveCompiler，AdaptiveExtensionFactory符合
+	4. 其他T类型，都会程序**createAdaptiveExtensionClass方法**生成。   
+
+对T的实现类不带有注解@Adaptive的处理:
+
+	1. 实现类有构造函数,这些类型被加入缓存属性**cachedWrapperClasses**中
+		- 例如A是T的实现，A存在构造签名: public A(T t){...}
+
+对T的普普通通的实现类的处理	:
+
+	1. 带有注解@Activate的实现类，将其name，类上注解加入缓存属性cachedActivates中
+	2. 将实现类型和name加入缓存cachedNames中	
+	3. 返回name，v类型组成map
+
+由于历史遗留和扩展性问题，这里的kv形式的k是有多种形式的,有以下几种配置方法:
+
+1. com.codeL.dubbo.CodeLDemo
+2. aa=com.codeL.dubbo.CodeLDemo
+3. aa,bb=com.codeL.dubbo.CodeLDemo
+
+对于第一种方式，我们这里提一下，这种已经被废弃了。
+
+	- 会尝试使用实现类上的注解@Extension的value值，如果value是空串，尝试用**小写名**,如果提取不了**小写名**就报错
+	- 没有注解则尝试用**小写名**,如果提取不了**小写名**，则用类名小写
+	
+小写名提取规则：ex，type=Inovker，v=SimpleInovker。小写名等价于simple，两者，后缀必须匹配。
+
+对于第二种方式，是正常的使用方式
+
+对于第三种方式，也是正常的使用方式
+
+最终得到的k会被‘,’分割多个形成名字数组，这个也仅仅给**T的普普通通的实现类**使用
+
 ---
 
-我们这里可以归纳下，**getExtensionClasses**一次调用，对ExtensionLoader<T>具体实例的完成了重要的相关属性设置，主要如下：
+### name的选择
 
-- **cachedClasses**:资源文件中kv对形成的name和类型的键值对，k可能解析会被成多个name，v是普通实现。
+有多个name，**T的普普通通的实现类**使用的name也是有选择的。
 
-- **cachedDefaultName**:type类型上@SPI注解的value值（非空串），不能含有分隔符‘,’。
+对于1方式，该name是每次执行loadFile方法，有多个name的第一项。   
+对于2方式，该name是多次执行loadFile方法，对于实现类的多个name的最早的第一项。   
+对于3方式，任意执行loadFile方法，每一个name都放置一次。  
 
-- **cachedAdaptiveClass**:带有@Adaptive的v类型，同T类型对应的所有jar包下相关资源文件中扫描后只能有一个@Adaptive的v类型
+---
+至此loadFile加载配置文件到内存类类型的设置就完成了。    
+	
+回头看**loadExtensionClasses**，我们看到执行了多次    loadFile，且用一个Map,也就是loadFile的第一个参数，保存了**T的普普通通的实现类**方式3的结果。
 
-- **cachedWrapperClasses**：能充当T类型静态代理的包装v类型，构造函数有T
+再从方法栈向外跳出，也就是**getExtensionClasses**方法里面，我们看到了这个map赋值给了缓存属性**cachedClasses**
 
-- **cachedActivates**：name（k拆分多个名字那么name为第一个），和普通v类型（带有@Activate注解）
+#### 小结
+---
+上面大量分析后，我们可以得出，基石操作**getExtensionClasses**一次调用，对T具体类扩展加载器做了很多事情，我们简单归纳:
 
-- **cachedNames**:普通v类型（包括有无@Activate注解）和k对应名字第一个name，k为所有type对应资源文件的第一个k。
+- **cachedClasses**:**T的普普通通的实现类**方式3的超集
 
->**tip**:这个方法调用，保存只是相关的扩展类的类类型，而不是对象实例。 
->其中**cachedClasses**上面已经提到过，现在对其做了解释
+- **cachedDefaultName**:T类型上@SPI的value值（非空串），不能含有分隔符‘,’。
+
+- **cachedAdaptiveClass**:@Adaptive的实现类类型，具体T类型的所有实现，只允许一个带有@Adaptive注解
+
+- **cachedWrapperClasses**：上面诸如例子: public A(T t){}的实现类
+
+- **cachedActivates**：单次loadFile后，name和带有注解@Activates的实现类的映射
+
+- **cachedNames**:见**name的选择**方式2
+
+>**tip**:这个方法调用，保存的只是类型，而不是实例。 
+
+
 
 #### 再谈**getAdaptiveExtensionClass**
 ---
-上面我们详细的介绍了的超级重要方法 **getExtensionClasses**。主要是一些缓存属性的设置，其中**cachedAdaptiveClass**正是**getAdaptiveExtensionClass**中会使用的。  
+上面我们介绍了基石操作**getExtensionClasses**，现在回顾最早出现的问题，为了读者阅读方便，我再次粘贴了源码
 
-### 插曲之@Adaptive注解
+		private Class<?> getAdaptiveExtensionClass() {
+	        getExtensionClasses();
+	        if (cachedAdaptiveClass != null) {
+	            return cachedAdaptiveClass;
+	        }
+	        return cachedAdaptiveClass = createAdaptiveExtensionClass();
+	    }
+我们可以看到**getAdaptiveExtensionClass**就是返回缓存属性**cachedAdaptiveClass**，再根据我们上文所说，默认类上带有
+@Adaptive注解的只有
+
+	AdaptiveCompiler，对应T类型:Compiler,扩展加载器ExtendLoader<Compiler>
+	AdaptiveExtensionFactory,对应T类型:ExtensionFactory,扩展加载器ExtendLoader<ExtensionFactory>
+因此，其他的扩展都是通过**createAdaptiveExtensionClass**生成的。
+
+
+### createAdaptiveExtensionClass()程序生成代码
 ---
-这个是dubbo中一个比较重要的注解，我们上面也提到了很多次，这个注解。我们现在来详细的了解说明下。
+上面我们说到除了T类型为，Compiler和ExtensionFactory有配置生成，其他都是程序运行生成，也就是方法**createAdaptiveExtensionClass()**，为什么要程序生成呢。因为有点灵活。因此其代码也是很恶心的，这里我们文字描述。
 
+代码逻辑在**createAdaptiveExtensionClassCode**中
 
-	
-	/**
-	 * 在{@link ExtensionLoader}生成Extension的Adaptive Instance时，为{@link ExtensionLoader}提供信息。
-	 * @see ExtensionLoader
-	 * @see URL
-	 */
-	@Documented
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.TYPE, ElementType.METHOD})
-	public @interface Adaptive {
-	    
-	    /**
-	     * 从{@link URL}的Key名，对应的Value作为要Adapt成的Extension名。
-	     * <p>
-	     * 如果{@link URL}这些Key都没有Value，使用 用 缺省的扩展（在接口的{@link SPI}中设定的值）。<br>
-	     * 比如，<code>String[] {"key1", "key2"}</code>，表示
-	     * <ol>
-	     * <li>先在URL上找key1的Value作为要Adapt成的Extension名；
-	     * <li>key1没有Value，则使用key2的Value作为要Adapt成的Extension名。
-	     * <li>key2没有Value，使用缺省的扩展。
-	     * <li>如果没有设定缺省扩展，则方法调用会抛出{@link IllegalStateException}。
-	     * </ol>
-	     * <p>
-	     * 如果不设置则缺省使用Extension接口类名的点分隔小写字串。<br>
-	     * 即对于Extension接口{@code com.alibaba.dubbo.xxx.YyyInvokerWrapper}的缺省值为<code>String[] {"yyy.invoker.wrapper"}</code>
-	     * 
-	     * @see SPI#value()
-	     */
-	    String[] value() default {};
-	    
-	}
+1. 遍历接口方法，对带有@Adaptive注解方法进行**特殊实现**，对不带有Adaptive进行**默认实现**(扔出异常UnsupportedOperationException)
 
-读者有兴趣可以看一下上面的，注释。不过和这里我们并没有任何相关联系，我们上面说到配置文件中实现类中要携带@Adaptive注解，我们简单搜一下全文，也就能发现，两个类实现类上标注了该注解。tip:不是接口，也不是在方法上标注。具体如下:
+>T具体接口的方法签名上，至少有一个带有@Adaptive注解，且该签名至少存在一个参数URL类型，或者某个参数能通过get方法获得URL类型。
 
-- AdaptiveCompiler
-- AdaptiveExtensionFactory  
-
-这里读者先留存印象，不需要思考，事实该注解另有所用。  
-该注解也提到了另一个注解@SPI，这个注解也是十分重要的注解。
-
-### 插曲之@SPI注解
----
-@SPI注解同样是一个比较重要的注解，其代码如下所示
-
-	/**
-	 * 扩展点接口的标识。
-	 * <p />
-	 * 扩展点声明配置文件，格式修改。<br />
-	 * 以Protocol示例，配置文件META-INF/dubbo/com.xxx.Protocol内容：<br />
-	 * 由<br/>
-	 * <pre><code>com.foo.XxxProtocol
-	com.foo.YyyProtocol</code></pre><br/>
-	 * 改成使用KV格式<br/>
-	 * <pre><code>xxx=com.foo.XxxProtocol
-	yyy=com.foo.YyyProtocol
-	 * </code></pre>
-	 * <br/>
-	 * 原因：<br/>
-	 * 当扩展点的static字段或方法签名上引用了三方库，
-	 * 如果三方库不存在，会导致类初始化失败，
-	 * Extension标识Dubbo就拿不到了，异常信息就和配置对应不起来。
-	 * <br/>
-	 * 比如:
-	 * Extension("mina")加载失败，
-	 * 当用户配置使用mina时，就会报找不到扩展点，
-	 * 而不是报加载扩展点失败，以及失败原因。
-	 *
-	 * @author william.liangf
-	 * @author ding.lid
-	 * @export
-	 */
-	@Documented
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.TYPE})
-	public @interface SPI {
-	
-	    /**
-	     * 缺省扩展点名。
-	     */
-		String value() default "";
-	
-	}
-
-同样对于该注解，读者留存印象即可，后面会详细展开。
-
-#### 三说**getAdaptiveExtensionClass**
----
-上面我们说到该方法返回是个从配置文件中获取的缓存（**cachedAdaptiveClass**），但是配置文件中没有一个实现类有这个注解怎么办。这时候我们看到了
-
-	return cachedAdaptiveClass = createAdaptiveExtensionClass();
-
-简单一行代码，完成了缓存属性**cachedAdaptiveClass**的设置，事实上dubbo是这样做的，他会根据type来在程序中产生相应的代码，然后使用编译器去编译它。没错，就是运行产生。具体流程如下描述
-- 遍历type类型的所有方法
-- 对带有@Adaptive注解方法进行实行
-- 对不带有Adaptive进行默认实现，扔出异常
-
->**tip**:type至少在多个方法上，至少存在一个带有@Adaptive注解，否则程序就崩溃了。
->**tip**:带有@Adaptive注解方法，至少存在一个参数URL类型，或者某个参数能通过get方法获得URL类型，否则程序就崩溃了。
-
-我们继续描述下对带有@Adaptive注解的方法如何实现的。
+我们继续描述下特殊实现。
 
 - 尝试寻找方法参数URL，并设定位置urlTypeIndex
-	- 写入相关代码
+	- 对参数url的判空校验
+	- 使用局部变量接收该url
 - 尝试寻找方法的参数的get方法获得URL，并设定位置urlTypeIndex
-	- 写入相关代码
-- 获得@Adaptive注解的value值
-	- tip:这个时候，读者请移到上文，看注解的注释，这里的value值就是注释说明的
-- 寻找com.alibaba.dubbo.rpc.Invocation类型的参数，写入校验代码
-- 对扩展名做处理，处理结果见@Adaptive注解
-- 其余请对照源码，和我的代码集合
+	- 对参数的判空校验
+	- 对参数的获得URL的get方法判空校验
+	- 使用局部变量接收url
+- 获得@Adaptive注解的value数组，没有生成一个String[]{接口名的改造（接口名为CodelDemo改造为codel.demo)}
+- 寻找com.alibaba.dubbo.rpc.Invocation类型的参数，如果存在进行，如下操作
+	- 对该参数进行判空校验，
+	- 使用局部变量methodName获得该参数的getMethodName()返回值
 
-描述了如何生成代码后，系统之间使用**AdaptiveCompiler**对象编译返回了。
-实际参与编译是**JavassistCompiler**类默认情况。  
-到这里所有Adaptive扩展类类型都完成了。
-
-#### 四说**getAdaptiveExtensionClass**
+### 获得最终扩展名
 ---
-对于**cachedAdaptiveClass**要么从配置文件获得，要么程序生成，最终**Adaptive扩展类类型**已经拿到手了。
->**tip**：**对于配置文件获得只有AdaptiveCompiler和AdaptiveExtensionFactory**   
->**tip**：**这只是个类类型**
+Adaptive的实现类，最终是通过一些信息生成获得，最终的普通实现类。代码最重要的也就是如何获得普通实现类。本点是继续上面的特殊实现:
 
-接下来就是**Adaptive扩展类**进行实例化，我们看到代码直接**newInstance**，然后调用了方法**injectExtension**。
+- 使用局部变量**defaultExtName**接收缓存属性**cachedDefaultName**
+- 使用局部变量**getNameCode**接收**defaultExtName**
+- 倒序遍历value数组，产生代码 
+	- 数组元素和字符串protocol不等
+		- 有Invocation参数   
+			- getNameCode = url.getMethodParameter(methodName, 该项值, defaultExtName)  
+		- 无Invocation参数  
+			- getNameCode = url.getParameter(该项值, getNameCode)    
+	- 数组元素和字符串protocol不等  
+		- getNameCode = ( url.getProtocol() == null ? getNameCode : url.getProtocol() )  
+- 使用局部变量**extName**，获得最终的扩展名（来自getNameCode）
+- 对extName判空校验
+- 使用局部变量**extension**，通过T类型具体扩展加载类getExtension()获得最终的扩展类（**T的普通实现**）
+- 调用扩展类的的该实现方法，返回方法返回值。
+
+至此，动态生成的cachedAdaptiveClass已经完成，这里缺少编译，我们一笔带过，dubbo至此jdk和javassistComplier，默认是后者，一般我们也不会对其扩展。
+
+### 小结
+---
+我们上面说了很多，也描绘了很多事情，最终都只是完成了配置文件到类类型的加载。类型实例化也没有讨论，
+现在让我们把目光转向最开始的地方，也就是**getAdaptiveExtension**,本文的最开始部分。从方法签名来看，
+返回是实例对象而不是类对象。然后我们引出了**createAdaptiveExtension**方法。
+
+	 private T createAdaptiveExtension() {
+        try {
+            //获得封装扩展的实例，并注入
+            return injectExtension((T) getAdaptiveExtensionClass().newInstance());
+        } catch (Exception e) {
+            throw new IllegalStateException("Can not create adaptive extenstion " + type + ", cause: " + e.getMessage(), e);
+        }
+    }
+为了读者阅读的简便性，我们再次贴出。我们看到了我们熟悉的getAdaptiveExtensionClass()方法，也就是返回缓存属性cachedAdaptiveClass。
+
+一行代码我们看出，她对cachedAdaptiveClass持有的类类型进行实例化，然后作为参数传入方法**injectExtension**中。
 
 ###重点方法之**injectExtension**
 ---
-这是个非常重要的方法，他对实例相关属性，进行了设置，注入之后才是一个完整的初始化后的依赖。代码如下:
+这是个极为重要的方法，他的主要功能就是完成实例的“初始化”（相关的属性的注入如同spring中的bean有多个阶段）。代码如下:
 
   	private T injectExtension(T instance) {
          if (objectFactory != null) {
@@ -342,37 +344,35 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
         return instance;
     }
 
-该方法针对除```ExtensionLoader<ExtenionFactory>```外的所有扩展加载器类型，其中一个重要对象属性**objectFactory**，其说明如下:
+该方法针对T不为ExtenionFactory扩展加载器类型，那是因为
 
-	//T为ExtensionFactory类实例(应用单例)该项为空
-    //others:AdaptiveExtensionFactory实例(单例)
-    private final ExtensionFactory objectFactory;
+- T为ExtenionFactory，其**objectFactory**为空
+- T不为ExtenionFactory，其**objectFactory**为**AdaptiveExtensionFactory**实例
 
-**tip**：这个方法一旦被执行，objectFactory总是AdaptiveExtensionFactory实例。给属性细心的读者之前肯定看到了，这里我们对其做了说明。
+>**tip**：代码见**getExtensionLoader**方法（关于获得T具体的扩展加载类型）
 
 最后该方法的逻辑如下: 
 
 1. 遍历所有的公共的，set开头，参数长度为1的方法
 2. 获得属性名字name，通过解析set方法名中取得。
-3. 通过AdaptiveExtensionFactory获得
-	- 这个factory本身委托给了其他v为ExtensionFactory普通实现类型，关于v的普通类型，请看前文介绍
-	- 假设在spring应用中，那么会委托给SpiExtensionFactory，SpringExtensionFactory执行。
+3. 通过AdaptiveExtensionFactory获得相关T的Adaptive扩展
+	- 这个factory本身委托给了其他普通实现类型（SpiExtensionFactory，SpringExtensionFactory）顺序处理
 		- SpiExtensionFactory加载
-			- 尝试获得pt类型的扩展加载器，然后加载所有配置扩展,在普通配置扩展有的情况下，触发加载重点方法之**getAdaptiveExtension**进行递归，取得Adaptive扩展
-			- **tip**:这种方式是加载框架内部的配置
-			- **tip**:这里有循环依赖的问题，dubbo团队内部配置类之间的关系没有循环依赖，改造代码时，一旦循环依赖，这里将出现问题，死锁
-		- SpringExtensionFactory加载
+			- 尝试获得T为pt类型的扩展加载器，然后加载其所有配置对应类型，获得其Adaptive扩展(进入递归)
+			- **tip**:加载框架内部结构，存在循环依赖，二次开发需要避免，否则死锁。
+		- SpringExtensionFactory加载(如果在spring环境中，这个时候不一定是Adaptive扩展)
 			- 直接从spring容器获得bean
-4. 使用反射将从容器取得的扩展实例适配注入到该实例中。
-5. 返回实例。
+4. 反射将的工厂中得到的对应实例注入。
+5. 返回本实例。
 
-### 最后**getAdaptiveExtension**
+### 最后的**getAdaptiveExtension**
 ---
-上面的方法返回之后，然后对**cachedAdaptiveInstance**完成缓存，现在读者应该对我上文让读者忽略的**cachedAdaptiveInstance**熟悉了。
+上述过程之后，cachedAdaptiveClass实例化出来的对象完成，完整的初始化，接着完成了缓存属性****cachedAdaptiveInstance****，读者读到这里因而能知道，这个过程是递归的，如同上面所说，读者二次开发
+需要注意循环依赖的问题。如果是Spring暴露出来的，那么没有任何问题。
 
 ### 再谈dubbo复杂配置类
 ---
-我们这里重新贴一遍代码
+到此，最开始我所说的一行代码已经解决，我们这里重新贴一遍代码
 
 - ServiceConfig（服务方的入口：**复杂配置类**）
 	- 提供者必须使用的复杂配置类
@@ -380,13 +380,17 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 	
 			    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
-重要的类属性，相关的说明，我们已经做了详细的介绍。值得说明的是，由于是类final属性，在ServiceConfig被JVM装载的时候就开始调用了。
+其做的工作我们都说明了，唯一遗漏的几点:
 
-- protocol持有的是Protocl$Adaptive，其他复杂类属性类似
+1. 由于类final属性，在ServiceConfig被JVM装载的时候就开始调用了。
 
-重点是程序生成的类，具体见我的资料，里面有这些类的代码。
+2. protocol持有的是Protocl$Adaptive，其他复杂类属性类似
+
+3. 想要看具体的程序生成Adaptive扩展，调试应用的时候，扣出来。
 
 ### 总结
 ---
-在该文中，我们其实只围绕了复杂配置类的复杂类属性展开，中间牵涉了部分的dubbo的配置运行流程以及知识点。正如我们所说，这些仅仅操作发生在ServiceConfig类的字节码被装载进JVM就开始，真正的服务还远着呢。下一篇，我们将揭开dubbo导出服务的过程。
+该文中，我们只围绕了复杂配置类的复杂类属性展开，由此迁出了dubbo的配置运行流程以及知识点。
+正如我最后所说，这些仅仅操作发生在ServiceConfig类的字节码被装载进JVM就开始，真正的服务开启，消费开发还远着呢。
+下一篇，我们将揭开dubbo导出服务之旅。
 
