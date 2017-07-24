@@ -17,9 +17,9 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 ### 超级重要的ExtensionLoader类
 ---
-上面一行代码中我们注意到这样一个类**ExtensionLoader**。 在dubbo框架中，这个类地位举足轻重，dubbo也是依靠该类进行扩张。在这里，我给它取个名字:**扩展加载器类**。
+上面一行代码中我们注意到这样一个类**ExtensionLoader**。 在dubbo框架中，这个类地位举足轻重，dubbo也是依靠该类进行扩展，我们本章也就是围绕着这个类展开。在这里，我们首先给它取个名字:**扩展加载器类**。
 
->**tip**: ***阅读该类务必对照源码，源码已加丰富注释，促进理解***
+>**tip**: ***阅读该类务必对照源码，源码已加丰富注释，促进读者理解***
 
 首先我们先贴出类声明，类声明结构如下:
 
@@ -29,8 +29,8 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 ####重点方法**getExtensionLoader**
 ---
-上述代码里，我们看到了该方法。这是**扩展加载器类**的一个非常重要的方法。
-我们将对其详细深究，首先先贴出其实现代码。
+上述一行代码中，我们看到对该方法的调用。这是**扩展加载器类**的一个非常重要的方法，
+在这里我们将对其详细展开，首先贴出源码。
 	
 	 public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         
@@ -45,15 +45,15 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
         }
         return loader;
     }
-
-以上就是**getExtensionLoader**内部实现代码。
-同行人一看就知道是缓存操作，重点**EXTENSION_LOADERS**这个缓存结构。  
+对于实现源码，读者可以一眼看出是缓存操作，重点**EXTENSION_LOADERS**这个缓存结构和新建缓存对象 **new ExtensionLoader<T>(type)**  
 
 **EXTENSION_LOADERS**是**类属性**，说明如下:
 
 	//全局，缓存了interface（这个class特指interface），与ExtensionLoader（interface的特殊实现类）的映射
     ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<>();
 也是就是说对于泛型T，**EXTENSION_LOADERS**结构缓存了T和T类型的扩展加载器。同时这个T必须是接口类型。
+
+
 
 ####重要方法**getAdaptiveExtension**
 --- 
