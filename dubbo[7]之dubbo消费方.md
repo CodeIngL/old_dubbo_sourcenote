@@ -5,23 +5,27 @@
 
 ----------
 
-废话不多说，假定认为读者现在已经有深厚的基础了。
+废话不多说，假定认为读者对dubbo已经有比较深入的了解。
 
 ReferenceConfig（消费方的入口）
-	- 消费者必须使用的配置类
-		- 复杂的非配置属性：
 
-			    private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+- 消费者必须使用的配置类
+		
+	- 复杂的非配置属性：
 
-			    private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
+			private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
-			    private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
-对于这些扩展配置的代码，读者应该相当的熟悉了，现在来看消费方的相关启动代码
+			private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
+
+			private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
+
+对于这些扩展配置的代码，读者应该相当的熟悉了，不熟悉的读者请阅读前面的文章。
+现在我们把目光转移到消费方的相关启动代码上
 
 ### 引用入口:get() ###
 
 ----------
-该方法是dubbo使用api方式编程需要调用的方法，返回一个rpc接口的包装。源码如下:
+引用入口是dubbo使用api方式编程需要调用的方法，返回一个rpc接口的包装，通过返回值，开发者就可以黑盒的方式进行rpc调用了。源码如下:
 
     public synchronized T get() {
         if (destroyed) {
@@ -33,7 +37,7 @@ ReferenceConfig（消费方的入口）
         return ref;
     }
 
-代码不多，和服务方类似，最开始总是先做些配置和属性的校验。
+代码不多，和服务方类似，最开始总是先做些配置和属性的校验，然后才是真正的网络通信的开启。
 
 ### 引用入口逻辑:init() ###
 
@@ -626,8 +630,8 @@ invoker是rpc框架中的一个概念，上面我们介绍了invoker的生成，
 
 代码如上，逻辑如下
 
-1. 改变url
-2. 获得registry
+1. 改变url，协议转换回来，当protcol为registry只是临时代表这个需要注册到注册中心上，但是真正的协议类型还是元信息中的registry的值
+2. 获得registry，这个时候协议已经被装换过了，默认是dubbo，当然我们一般配置zookeeper
 3. 获得refer信息
 4. 处理group，如果有的话
 	1. 使用MergeableCluster处理
