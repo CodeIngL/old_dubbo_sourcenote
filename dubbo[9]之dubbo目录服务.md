@@ -37,4 +37,14 @@
 
 这是一个抽象类，完成了目录服务的基本操作，并暴露一些方法给子类实现，从而进行回调。
 
+	public AbstractDirectory(URL url, URL consumerUrl, List<Router> routers) {
+        if (url == null)
+            throw new IllegalArgumentException("url == null");
+        this.url = url;
+        this.consumerUrl = consumerUrl;
+        setRouters(routers);
+    }
+
+以上是抽象目录服务的构造函数，简单完成了本身持有的特征属性的赋值
+
 
