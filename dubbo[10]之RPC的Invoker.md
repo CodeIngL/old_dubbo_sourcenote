@@ -188,3 +188,61 @@ tip: url的每个操作都会进行浅copy生成新的url
 5. 新建一个dubbo自实现的注册中心
 6. 返回自实现的注册中心
 
+### 对于接口为RegistryService ###
+
+----------
+对于接口为RegistryService，不需要任何包装了，直接返回。
+
+
+### 处理group ###
+
+----------
+
+熟悉dubbo配置童鞋知道，group是一个常用的配置。在这里进行了group的配置项处理
+
+        // group="a,b" or group="*"
+        //处理group配置项
+        Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
+        String group = qs.get(Constants.GROUP_KEY);
+        if (group != null && group.length() > 0) {
+            if ((Constants.COMMA_SPLIT_PATTERN.split(group)).length > 1
+                    || "*".equals(group)) {
+                return doRefer(getMergeableCluster(), registry, type, url);
+            }
+        }
+        return doRefer(cluster, registry, type, url);
+
+如同代码所说，当一个接口有多个group或者通配group时候，使用的策略是不一样的。
+ 1. 符合上面描述的时候使用，使用MergeableCluster进行包装
+ 2. 否则使用默认自带的FailoverCluster进行包装
+
+
+
+### doRefer的处理 ###
+
+----------
+
+    private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
+        directory.setRegistry(registry);
+        directory.setProtocol(protocol);
+        URL subscribeUrl = new URL(Constants.CONSUMER_PROTOCOL, NetUtils.getLocalHost(), 0, type.getName(), directory.getUrl().getParameters());
+        if (!Constants.ANY_VALUE.equals(url.getServiceInterface())
+                && url.getParameter(Constants.REGISTER_KEY, true)) {
+            registry.register(subscribeUrl.addParameters(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY,
+                    Constants.CHECK_KEY, String.valueOf(false)));
+        }
+        directory.subscribe(subscribeUrl.addParameter(Constants.CATEGORY_KEY,
+                Constants.PROVIDERS_CATEGORY
+                        + "," + Constants.CONFIGURATORS_CATEGORY
+                        + "," + Constants.ROUTERS_CATEGORY));
+        return cluster.join(directory);
+    }
+
+doRefer是最终的逻辑处理，逻辑如下:
+
+1. 新建一个目录服务
+2. 目录服务属性的设置
+3. 向注册中心注册URL信息
+4. 返回由cluster包装的invoker
+
