@@ -437,3 +437,17 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 2. check=true(check为空的情况下）
 3. 在check为true的情况下，会去验证服务的可用性
 
+
+第四点创建服务代理
+
+	return (T) proxyFactory.getProxy(invoker);
+
+这里的代理的创建，请见dubbo之创建代理一文。
+
+
+### 小结 ###
+
+----------
+
+文章到这里，基本上介绍了下dubbo消费方的逻辑，当然还有很多细节没有描述到位，比如具体的网络暴露还是没有涉及。下一篇dubbo消费引用我们将展开细致的描述
+
