@@ -1,11 +1,10 @@
 ## dubbo之消费引用 ##
-上一篇我们简单的介绍了服务引用行为。但是还没讨论关键引用的细节，本文中我们将展开详细描述.
+上一旁dubbo之消费方，我们简单介绍了消费方暴露的整个过程，但是其中的细节还是没有进行涉及，读者可能还存在很多疑惑。本文，我们将对消费引用这一环节展开详细描述。
 
-### refer消息引用入口 ###
+### 消息引用入口:refer ###
 
 ----------
-该方法是服务引用的入口，和我们之前的export功能相反。
-与export一样我们先来介绍最复杂的带注册中心的引用
+该方法是消费方引用的入口，和我们之前的export功能在地位上功能相反，与export一样我们先来介绍最复杂的带注册中心的引用。
 
 	refprotocol.refer(interfaceClass, url)
 代码如同上，在我们基础上我们很容易明白refprotocol就是指
@@ -171,3 +170,29 @@ invoker是rpc框架中的一个概念，上面我们介绍了invoker的生成，
 5. 对于需要被注册的url，使用注册中心registry进行注册
 6. 使用RegistryDirectory进行订阅
 7. 返回有cluster合并的Invoker
+
+### RegistryProtocol.refer的小结 ###
+
+----------
+到这里关于消费方注册中心的refer就到此为止了。但是关于网络这一块还是没有涉及，接下来我们针对其默认的DubboProtocol进行网络的展开
+
+
+### DubboProtocol.refer ###
+
+----------
+有了前面的基础，现在我们将快速对这些方面进行展开
+
+
+    public <T> Invoker<T> refer(Class<T> serviceType, URL url) throws RpcException {
+        DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
+        invokers.add(invoker);
+        return invoker;
+    }
+
+代码很简单，比之前的注册中心好很多，但是需要注意的地方却更多
+
+### getClient网络展开 ###
+
+----------
+
+这就是我们需要注意的地方之一，网络细节全都封装在内部
