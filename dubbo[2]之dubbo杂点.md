@@ -1,5 +1,5 @@
-##dubbo 杂点
-dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我们留的疑问我们也将在该篇文章中一一解答。
+##  dubbo 杂点 ##
+dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的零散但很重要的知识，上一篇**dubbo配置**我们留的疑问我们也将在该篇文章中一一解答。
 
 虽然是杂点，但是只是名字上的而已，知识点还是比较重要的，这里会引出一个jdk中存在的一个概念。阅读的时候，读者应该尽量参考源码，[dubbo源码地址](http://192.168.110.114/laihj/dubbo "dubbo源码地址")。源码加上了相关的注释。
 
@@ -15,7 +15,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 上一篇文章中，对于上面的代码，我们让读者留有印象即可，而现在正是我们本文议论的出发点，本文也是围绕着该行代码展开。
 
-### 超级重要的ExtensionLoader类
+### 超级重要的ExtensionLoader类 ###
 ---
 上面一行代码中我们注意到这样一个类**ExtensionLoader**。 在dubbo框架中，这个类地位举足轻重，dubbo也是依靠该类进行扩展，我们本章也就是围绕着这个类展开。在这里，我们首先给它取个名字:**扩展加载器类**。
 
@@ -27,7 +27,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 从声明结构我们可以看出，其带有泛型结构T，这里称之为T类型扩展加载器。
 
-####重点方法**getExtensionLoader**
+#### 重点方法**getExtensionLoader** ####
 ---
 上述一行代码中，我们看到对该方法的调用。这是**扩展加载器类**的一个非常重要的方法，
 在这里我们将对其详细展开，首先贴出源码。
@@ -55,7 +55,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 
 
-####重要方法**getAdaptiveExtension**
+#### 重要方法**getAdaptiveExtension** ####
 --- 
 重新回顾最开始的一行代码，我们可以看到当获取到特定（T为Protocol.class）的扩展加载器后立马调用
 **getAdaptiveExtension**方法。该方法也是扩展加载器中一个非常的重要的方法。
@@ -67,18 +67,12 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
                 synchronized (cachedAdaptiveInstance) {
                     instance = cachedAdaptiveInstance.get();
                     if (instance == null) {
-                        try {
-                            instance = createAdaptiveExtension();
-                            cachedAdaptiveInstance.set(instance);
-                        } catch (Throwable t) {
-                            createAdaptiveInstanceError = t;
-                            throw new IllegalStateException("fail to create adaptive instance: " + t.toString(), t);
-                        }
+                        instance = createAdaptiveExtension();
+                        cachedAdaptiveInstance.set(instance);
+                        //省略了异常代码
                     }
                 }
-            } else {
-                throw new IllegalStateException("fail to create adaptive instance: " + createAdaptiveInstanceError.toString(), createAdaptiveInstanceError);
-            }
+            } 
         }
         return (T) instance;
     }
@@ -92,12 +86,12 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 对于获得缓存对象的方法**createAdaptiveExtension**，代码如下:
 
-		T createAdaptiveExtension() {
-	            return injectExtension((T) getAdaptiveExtensionClass().newInstance());
-	    }
+	T createAdaptiveExtension() {
+        return injectExtension((T) getAdaptiveExtensionClass().newInstance());
+    }
 代码实现只有短短一行，重点不言而明。我们一一道来
 
-####方法**getAdaptiveExtensionClass**
+####  方法**getAdaptiveExtensionClass** ####
 ---
 该方法是一行代码重点关注之一，代码如下:
 
@@ -111,7 +105,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 代码也是十分简短的，这里我们需要关注的有两点，一是方法的内部实现，二是方法返回值，返回值我们可以看出是返回类类型，因而一行代码中的**newInstance**的代码实现自然可以忽略了。现在我们把关注点转移到方法内部实现。
 	
-####超级重点方法**getExtensionClasses**
+#### 超级重点方法**getExtensionClasses** ####
 ---
 该函数是一个超级重要的方法，在上面方法内部实现调用，实际上也被广泛在其他方法中调用。该方法完成了dubbo配置类的加载，实现了对泛型T结构的实现类的类加载和管理，代码如下:
 
@@ -134,7 +128,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 - 方法	**loadExtensionClasses**，其功能主要实现加载相关实现类，新建为缓存对象
 
-####超级重点方法**loadExtensionClasses**
+#### 超级重点方法**loadExtensionClasses** ####
 --- 
 	private Map<String, Class<?>> loadExtensionClasses() {
         
@@ -160,7 +154,7 @@ dubbo杂点，描述的是一些的零散的知识，上一篇**dubbo配置**我
 
 > loadfile方法内部做了很多操作，总体是完成了配置文件中的内容，到内存缓存属性的生成和设置。我们接下来以简要的文字描述其功能。
 
-####loadFile的逻辑
+#### loadFile的逻辑 ####
 ---
 本质是kv（k-->name；v-->类全称）的解析，目的是为了完成对**T类型扩展加载器**，几个**重要缓存对象属性**的设置，这里我们以文字的形式详细描述下：
 

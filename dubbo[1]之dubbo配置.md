@@ -3,7 +3,7 @@ dubbo对我们来说是一款比较优秀的RPC框架(十分优秀)。对dubbo�
 
 dubbo配置模块，是dubbo众多的模块之一，当然也是dubbo框架核心模块之一。  
 
-通过这篇文章，我们将详细来介绍dubbo配置模块的内容。
+该篇文章作为dubbo源码分析的第一篇文章,我们将通过对配置模块的简单介绍来使读者由浅入深的接触整个dubbo源码。
 
 >**tip**：***framework conf is not only for spring***  
 >dubbo推荐使用Spring来工作，但spring只是dubbo运行的壳子，脱离了spring依旧能够运行
@@ -15,7 +15,7 @@ dubbo-config-api包是dubbo配置模块的子包，里面包含dubbo中的配置
 
 对应配置类，读者首先必须有这样的概念：
 
-1. **配置类极有可能是单纯的POJO(拥有基本类型、String等等)**
+1. **配置类极有可能是单纯的POJO(拥有基础类型)**
 
 2. **配置类也有可能嵌套配置类，本质是一个单纯的POJO**
 
@@ -23,7 +23,7 @@ dubbo-config-api包是dubbo配置模块的子包，里面包含dubbo中的配置
 
 4. **配置类是顶层配置类，往往的作用也是同第三点一样**
 
-为了下文描述的方便，对于符合上述第3，4项要求的配置类我们称**复杂配置类**，其他形式的称为**简单配置类**。
+为了下文描述的方便，对于符合上述第3、4项要求的配置类我们称**复杂配置类**，其他形式的称为**简单配置类**。
 
 #### dubbo复杂配置类
 ---
@@ -53,7 +53,7 @@ dubbo中唯一的两个**复杂配置类**，也正是dubbo服务，服务方和
 				//ProxyFactory$Adaptive单例唯一
 			    private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
-读者可以先忽略掉这些代码，只需要对这两个复杂配置类有所保留印象。详细的解释我们将会慢慢展开
+读者请先**忽略**这些代码，只需要对这两个复杂配置类有所保留印象。详细的解释我们将会慢慢展开
 
 #### dubbo-api编码
 ---
