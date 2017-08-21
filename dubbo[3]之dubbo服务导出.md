@@ -1,12 +1,15 @@
-##dubbo 服务导出
+## dubbo 服务导出 ##
+
 上一篇文章中，我们通过服务提供者的复杂配置类进行了展开，介绍了dubbo配置模块的运行流程。
 在本篇文章中，我会通过服务方的复杂配置类来进行开启我们服务导出之旅。
 
-### ServiceConfig服务导出
+### ServiceConfig服务导出 ###
+
 ---
 在dubbo杂点中，我们已经指出了ServiceConfig是服务导出类。现在我们来看下是这个复杂配置类到底是如何进行服务导出的。
 
-### 服务提供者入口:ServiceConfig.export()
+### 服务提供者入口:ServiceConfig.export() ###
+
 ---
 该方法是dubbo导出服务的入口，其在第一篇中引用官方api编码后，应用启动后触发。
 
@@ -25,10 +28,7 @@
         if (delay != null && delay > 0) {
             Thread thread = new Thread(new Runnable() {
                 public void run() {
-                    try {
-                        Thread.sleep(delay);
-                    } catch (Throwable e) {
-                    }
+                    Thread.sleep(delay);
                     doExport();
                 }
             });
@@ -48,7 +48,8 @@
 
 以上就是方法的逻辑介绍，我们看到的真正的处理被隐藏在方法**doExport()**中
 
-### 服务提供者导出逻辑:ServiceConfig.doExport()
+### 服务提供者导出逻辑:ServiceConfig.doExport() ###
+
 ---
 该方法是服务导出的进一步逻辑处理。   
 之前的文章中，我们提到ServiceConfig还是个**复杂配置类**，意味着本质上还是配置类，因此相关配置属性校验是必不可少的。    
@@ -56,40 +57,40 @@
 
     protected synchronized void doExport() {
         
-		//1.对（exported）导出标记和（unexported）未导出标记进行校验
+        //1.对（exported）导出标记和（unexported）未导出标记进行校验
 
         //2.对（interfaceName:必填）接口名字配置项校验
-      
-		//3.对 (provider:可选)**简单配置类**进行校验
+        
+        //3.对 (provider:可选)**简单配置类**进行校验
 
-		//4.尝试从嵌套的简单配置中，完成配置的转移，即完成本身的配置类属性配置
-		//----application为空，尝试从provider配置类中获取
-		//----module为空，尝试从provider配置类中获取
-		//----registries为空，尝试从provider，module，application配置类中获取
-		//----monitor为空，尝试从provider，module，application配置类中获取
-		//----protocols为空，尝试从provider配置类中获取
+        //4.尝试从嵌套的简单配置中，完成配置的转移，即完成本身的配置类属性配置
+        //----application为空，尝试从provider配置类中获取
+        //----module为空，尝试从provider配置类中获取
+        //----registries为空，尝试从provider，module，application配置类中获取
+        //----monitor为空，尝试从provider，module，application配置类中获取
+        //----protocols为空，尝试从provider配置类中获取
 
-		//5.对配置项ref进行检验
-		//----通用接口，属性**interfaceClass**为GenericService，generic为true
-		//----非通用接口，属性**interfaceClass**为**interfaceName**的类类型，generic为false
-				//interfaceClass必须存在，且是接口，接口必须包含配置类methods的全部方法（如果methods配置存在的话）
-				//ref必须存在，并实现interfaceClass
-		
-		//6.对属性local和stub的处理
-				//配置local=true，本地必须存在${interfaceName}Local的实现,且是interfaceClass的实现
-				//配置stub=true，本地必须存在${interfaceName}Socal的实现,且是interfaceClass的实现
+        //5.对配置项ref进行检验
+        //----通用接口，属性**interfaceClass**为GenericService，generic为true
+        //----非通用接口，属性**interfaceClass**为**interfaceName**的类类型，generic为false
+                //interfaceClass必须存在，且是接口，接口必须包含配置类methods的全部方法（如果methods配置存在的话）
+                //ref必须存在，并实现interfaceClass
+        
+        //6.对属性local和stub的处理
+                //配置local=true，本地必须存在${interfaceName}Local的实现,且是interfaceClass的实现
+                //配置stub=true，本地必须存在${interfaceName}Socal的实现,且是interfaceClass的实现
 
-		//7.对 (application:可选)**简单配置类**进行校验
+        //7.对 (application:可选)**简单配置类**进行校验
 
-		//8.对 (registries:可选)**简单配置类的List**进行校验
+        //8.对 (registries:可选)**简单配置类的List**进行校验
 
-		//9.对 (protocols:可选)**简单配置类的List**进行校验
+        //9.对 (protocols:可选)**简单配置类的List**进行校验
 
-		//10.使用**appendProperties**完成自己本身基本属性的设置
+        //10.使用**appendProperties**完成自己本身基本属性的设置
 
-		//11.对属性local和stub的的校验，并生成mock
+        //11.对属性local和stub的的校验，并生成mock
 
-		//12.对属性path进行设置，为空，赋值为配置项interfaceName
+        //12.对属性path进行设置，为空，赋值为配置项interfaceName
 
         doExportUrls();
     }
@@ -118,8 +119,7 @@
             }
         }
         if (application == null) {
-            throw new IllegalStateException(
-                    "No such application config! Please add <dubbo:application name=\"...\" /> to your spring config.");
+            //省略了异常代码
         }
         appendProperties(application);
 
@@ -152,13 +152,7 @@
             }
         }
         if ((registries == null || registries.size() == 0)) {
-            throw new IllegalStateException((getClass().getSimpleName().startsWith("Reference")
-                    ? "No such any registry to refer service in consumer "
-                    : "No such any registry to export service in provider ")
-                    + NetUtils.getLocalHost()
-                    + " use dubbo version "
-                    + Version.getVersion()
-                    + ", Please add <dubbo:registry address=\"...\" /> to your spring config. If you want unregister, please set <dubbo:service registry=\"N/A\" />");
+            //省略了异常代码
         }
         for (RegistryConfig registryConfig : registries) {
             appendProperties(registryConfig);
@@ -209,7 +203,7 @@
 **appendProperties**也多次用到。而这个**appendProperties**除了这里的共性以外，第10点的实现也是使用它。我们先介绍这个方法，因为
 这个方法提供了我们灵活的设置配置类，我简称最后的后门。
 
-#### 重点方法**appendProperties**
+#### 重点方法**appendProperties** ####
 ---
 上面我们多次提到了**appendProperties**方法。该方法与配置类基本属性设置相关，是一个重点方法，也是我们进行扩展时，可以考虑的扩展点。
 我们先看其代码:
@@ -222,60 +216,56 @@
 
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
-            try {
-                String name = method.getName();
-                if (name.length() > 3 && name.startsWith("set") && Modifier.isPublic(method.getModifiers())
-                        && method.getParameterTypes().length == 1 && isPrimitive(method.getParameterTypes()[0])) {
-                    String suffix = StringUtils.camelToSplitName(name.substring(3, 4).toLowerCase() + name.substring(4), "-");
-                    String value = null;
-                    if (config.getId() != null && config.getId().length() > 0) {
-                        String pn = prefix + config.getId() + "." + suffix;
-                        value = System.getProperty(pn);
-                        if (!StringUtils.isBlank(value)) {
-                            logger.info("Use System Property " + pn + " to config dubbo");
-                        }
-                    }
-                    if (value == null || value.length() == 0) {
-                        String pn = prefix + suffix;
-                        value = System.getProperty(pn);
-                        if (!StringUtils.isBlank(value)) {
-                            logger.info("Use System Property " + pn + " to config dubbo");
-                        }
-                    }
-                    if (value == null || value.length() == 0) {
-                        Method getter;
-                        try {
-                            getter = config.getClass().getMethod("get" + name.substring(3), new Class<?>[0]);
-                        } catch (NoSuchMethodException e) {
-                            try {
-                                getter = config.getClass().getMethod("is" + name.substring(3), new Class<?>[0]);
-                            } catch (NoSuchMethodException e2) {
-                                getter = null;
-                            }
-                        }
-                        if (getter != null) {
-                            if (getter.invoke(config, new Object[0]) == null) {
-                                if (config.getId() != null && config.getId().length() > 0) {
-                                    value = ConfigUtils.getProperty(prefix + config.getId() + "." + suffix);
-                                }
-                                if (value == null || value.length() == 0) {
-                                    value = ConfigUtils.getProperty(prefix + suffix);
-                                }
-                                if (value == null || value.length() == 0) {
-                                    String legacyKey = legacyProperties.get(prefix + suffix);
-                                    if (legacyKey != null && legacyKey.length() > 0) {
-                                        value = convertLegacyValue(legacyKey, ConfigUtils.getProperty(legacyKey));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (value != null && value.length() > 0) {
-                        method.invoke(config, new Object[]{convertPrimitive(method.getParameterTypes()[0], value)});
+            String name = method.getName();
+            if (name.length() > 3 && name.startsWith("set") && Modifier.isPublic(method.getModifiers())
+                    && method.getParameterTypes().length == 1 && isPrimitive(method.getParameterTypes()[0])) {
+                String suffix = StringUtils.camelToSplitName(name.substring(3, 4).toLowerCase() + name.substring(4), "-");
+                String value = null;
+                if (config.getId() != null && config.getId().length() > 0) {
+                    String pn = prefix + config.getId() + "." + suffix;
+                    value = System.getProperty(pn);
+                    if (!StringUtils.isBlank(value)) {
+                        logger.info("Use System Property " + pn + " to config dubbo");
                     }
                 }
-            } catch (Exception e) {
-                logger.error(e.getMessage(), e);
+                if (value == null || value.length() == 0) {
+                    String pn = prefix + suffix;
+                    value = System.getProperty(pn);
+                    if (!StringUtils.isBlank(value)) {
+                        logger.info("Use System Property " + pn + " to config dubbo");
+                    }
+                }
+                if (value == null || value.length() == 0) {
+                    Method getter;
+                    try {
+                        getter = config.getClass().getMethod("get" + name.substring(3), new Class<?>[0]);
+                    } catch (NoSuchMethodException e) {
+                        try {
+                            getter = config.getClass().getMethod("is" + name.substring(3), new Class<?>[0]);
+                        } catch (NoSuchMethodException e2) {
+                            getter = null;
+                        }
+                    }
+                    if (getter != null) {
+                        if (getter.invoke(config, new Object[0]) == null) {
+                            if (config.getId() != null && config.getId().length() > 0) {
+                                value = ConfigUtils.getProperty(prefix + config.getId() + "." + suffix);
+                            }
+                            if (value == null || value.length() == 0) {
+                                value = ConfigUtils.getProperty(prefix + suffix);
+                            }
+                            if (value == null || value.length() == 0) {
+                                String legacyKey = legacyProperties.get(prefix + suffix);
+                                if (legacyKey != null && legacyKey.length() > 0) {
+                                    value = convertLegacyValue(legacyKey, ConfigUtils.getProperty(legacyKey));
+                                }
+                            }
+                        }
+                    }
+                }
+                if (value != null && value.length() > 0) {
+                    method.invoke(config, new Object[]{convertPrimitive(method.getParameterTypes()[0], value)});
+                }
             }
         }
     }
@@ -298,7 +288,8 @@
 
 这样方法appendProperties就说明完毕了，但是遗留了一个问题，也就是方法**ConfigUtils.getProperty**的行为。
 
-#### ConfigUtils.getProperty获得配置信息
+#### ConfigUtils.getProperty获得配置信息 ####
+
 ---
 上面如同appendProperties方法，我们提到了很多次ConfigUtils.getProperty方法。这个也是比较重要的方法，对开发者来说。
 
@@ -318,7 +309,7 @@
     }
 代码也很简单，也是首先尝试从系统配置中获得属性值，当没有值的时候，尝试从配置文件中获得。
 
-#### ConfigUtils.getProperties()获取配置文件信息
+#### ConfigUtils.getProperties()获取配置文件信息 ####
 
     public static Properties getProperties() {
         if (PROPERTIES == null) {
@@ -350,21 +341,21 @@
 
 ----------
 
-	 public static Properties loadProperties(String fileName, boolean allowMultiFile, boolean optional)
+    public static Properties loadProperties(String fileName, boolean allowMultiFile, boolean optional)
 
 参数有点多，先来解释下，第一个参数自然是文件名或者路径名了，第二个参数代表是否允许多个文件，第三个参数无用参数。
 由于代码篇幅过长，但是没重要的技巧。我们这里以文字描述其逻辑:
 
-1. 根据第一个蚕食是否以/开头来确定是否是路径，是则之间以文件的形式读取并返回。
+1. 根据第一个参数是否以/开头来确定是否是路径，是则之间以文件的形式读取并返回。
 2. 使用java URL形式读取，读取符号的资源，根据第二个参数来是否允许多个资源。 
 
 回过头来我们看**getProperty**，现在就是返回最终的配置了，通过传递进来的key在从配置文件的内存map中获得相应value，
 值得注意的是，如果这个value含有${xxx}占位，会尝试从优先系统配置，然后内存map中提取来代替占位，没有则用空串替代。
 	
-#### 再谈服务导出逻辑
+#### 再谈服务导出逻辑 ####
 
 ----------
-上面说了这么多，已经离我们先前的服务导出逻辑很久了。当然我们高清了这些配置类的可选性，已经要求，以及其的属性如何设置。接下来也就是第11，12点的说明了
+上面说了这么多，已经离我们先前的服务导出逻辑很久了。当然我们搞清了这些配置类的可选性，已经要求，以及其的属性如何设置。接下来也就是第11，12点的说明了
 
 
 1. 第11点的说明，其检测了三个配置属性，local，stub，mock。这三个属性其实也是很重要的，其中前两个我们之前提到过。
@@ -377,7 +368,7 @@ tip：这些类必须是该其interfaceClass属性的实现类
 
 2. 第12点的说明，path配置属性没有配置的情况下，使用interfaceName来作为配置名，也就是服务的接口名。
 
-#### 服务提供者入口:ServiceConfig.doExportUrls()
+#### 服务提供者入口:ServiceConfig.doExportUrls() ####
 ---
 上面我们顺利完成了服务导出逻辑的描述，也说道真正的服务导出，是最后一行代码，也就是现在我们需要详细探究的地方。ServiceConfig.doExportUrls()该方法是export的核心逻辑委托。在上面的配置类的关系设置后，就会转入该方法执行。  
 实现很简单：
@@ -391,7 +382,7 @@ tip：这些类必须是该其interfaceClass属性的实现类
 	    }
 代码很短，隐藏的东西很多，主要关注的有两个方法，loadRegistries和doExportUrlsFor1Protocol，都很重要，我们慢慢道来吧。
 
-#### 将注册配置类转换为元信息（URL）：loadRegistries
+#### 将注册配置类转换为元信息（URL）：loadRegistries ####
 ---
 该方法是很重要的方法，它的指针如标题所说，将注册配置类转换为url。首先看一下签名
 
@@ -419,13 +410,6 @@ tip：这些类必须是该其interfaceClass属性的实现类
                 map.put("dubbo", Version.getVersion());
                 map.put("timestamp", String.valueOf(System.currentTimeMillis()));
                 map.put("pid", String.valueOf(ConfigUtils.getPid()));
-                if (!map.containsKey("protocol")) {
-                    if (ExtensionLoader.getExtensionLoader(RegistryFactory.class).hasExtension("remote")) {
-                        map.put("protocol", "remote");
-                    } else {
-                        map.put("protocol", "dubbo");
-                    }
-                }
                 List<URL> urls = UrlUtils.parseURLs(address, map);
                 for (URL url : urls) {
                     url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
@@ -459,13 +443,10 @@ tip：这些类必须是该其interfaceClass属性的实现类
 		4. 放置key:dubbo,value:2.0.0(Version.getVersion())
 		5. 放置key:timestamp，value:当前时间
 		6. 放置key:pid，value:ConfigUtils.getPid()(应用pid)
-		7. map中没有key:protocol的情况（也就是registry没有配置器protocol属性）
-			- 扩展类存在"remote"对应的配置，放置key:protocol,value:remote
-			- 扩展类不存在"remote"对应的配置，放置key:protocol,value:dubbo
 	2. 使用配置address和得到map结合生成url列表,使用**UrlUtils.parseURLs**
 	3. 处理url列表中的每一个url
 		1. 放置key:registry,value:URL的协议(url.getProtocol())
-		2. 设置URL的协议为registry,(url.setProtocol()),相当于发生了转换
+		2. 设置URL的协议为registry,(url.setProtocol()),隐藏了真实的注册中心协议，用registry来对外统一代表这是个注册中心，特定的注册中心的协议则转移到了参数registry对应的值上。
 		3. 根据方法参数和url中的属性来确定是否加入要返回的registryUrl列表
 			1. 入参为true，url需含有register(形式上)，默认为true(服务方)
 			2. 入参为false，url需含有subscribe(形式上)，默认为true(消费方)
@@ -473,14 +454,14 @@ tip：这些类必须是该其interfaceClass属性的实现类
 
 细心的读者肯定发现了被加粗的方法，这些加粗的的确是比较重要的方法。我们一一道来
 
-#### 插曲之appendParameters方法
+#### 插曲之appendParameters方法 ####
 ---
 该方法是就是被加粗的方法之一，除了上面，dubbo源码很多地方也用到了这个方法，和**appendProperties**相似，
 appendParameters方法是讲配置类的信息提取出来，而**appendProperties**则相反。现在我们就此方法进行详细说明:
 
-	  	protected static void appendParameters(Map<String, String> parameters, Object config)
+    protected static void appendParameters(Map<String, String> parameters, Object config)
 
-		protected static void appendParameters(Map<String, String> parameters, Object config, String prefix)
+    protected static void appendParameters(Map<String, String> parameters, Object config, String prefix)
 以上是同名方法签名，其中方法一等价于方法二的第三个入参为空，接下来我们看一下方法二。
 
 
@@ -554,36 +535,33 @@ appendParameters方法是讲配置类的信息提取出来，而**appendProperti
 以上就是方法的全部代码，和**appendProperties**基本上就是相反操作，当然细节是不同的。我们一一道来
 
 1. 处理基本类型（基本配置属性）的get或者is方法，尝试从方法上获得注解@Parameter
-	1. 排除掉返回值是Object或者有注解并且注解excluded为true的这些方法
-	2. 获得key（存入map中的），有注解尝试使用注解的key的有效值，否则方法名中提取，例如getCodelDemo，提取为codel.demo
-	3. 放射获得基本配置属性值，对于合法的值，将会和key形成组合放入map中，合法值的处理
-		1. 对值string化，并两边去掉空格
+	1. 忽略返回值为Object或者有注解并且注解excluded为true的这些方法
+	2. 获得key（存入入参parameters中的）
+        1. 尝试使用注解的key值
+        2. 从方法名中提取值，例如getCodelDemo，提取为codel.demo
+	3. 构建key对应的value
+        1. 放射获得基本配置属性值,并string化，尝试去掉空格
 		2. 含有注解，且注解escaped为true，进行对该值URL方式编码
-		3. 含有注解，且注解append为true，尝试先从map中获得值，依次使用default+key，key做为键取得值，和当前值进行追击
+		3. 含有注解，且注解append为true，尝试先从map中获得值，依次使用default+key，key做为键取得值，和当前值进行追加，也就是多个键一样的值进行合并成统一个字符串。
 		4. 如果前缀存在，为key添加前缀
-		5. 将key值和处理后的基本属性值放入map中
-1. 处理getParameters方法返回值是Map
-	1. 遍历处理属性map，将其key转换为前缀+key（前缀有的话）的形式，并将key中-用.代替，将key和value加入返回的map中
+		5. 将key和value放入入参parameters中
+2. 处理配置类的getParameters并且返回值是Map的方法
+	1. 遍历处理属性map，将其key转换为前缀+key（前缀有的话）的形式，并将key中-用.代替，将key和value加入入参parameters中
 
-appendParameters方法到这里就说明完毕了，值得说明的最后一步的map，其实对应了dubbo的spring版的配置的agrument配置类。
+appendParameters方法到这里就说明完毕了，值得说明的是对于第二点的处理中的map，其实对应了dubbo的spring版的配置的agrument配置类。
 
-#### 插曲之UrlUtils.parseURLs方法
+#### 插曲之UrlUtils.parseURLs方法 ####
 
 ----------
 这个方法可了不得，学好dubbo，你必须学好其的元信息是如何生成的，这样查错的时候，一眼简明。
 
 	public static List<URL> parseURLs(String address, Map<String, String> defaults)
 
-这个是方法签名，两个参数，地址信息和其他信息的map组合
+这个是方法签名，两个参数，地址信息(地址信息当然也可以自身携带参数信息，如同http的get方式携带参数)和其他信息的map组合
 
 	public static List<URL> parseURLs(String address, Map<String, String> defaults) {
-        if (address == null || address.length() == 0) {
-            return null;
-        }
+        //省略入参address检查
         String[] addresses = Constants.REGISTRY_SPLIT_PATTERN.split(address);
-        if (addresses == null || addresses.length == 0) {
-            return null; //here won't be empty
-        }
         List<URL> registries = new ArrayList<URL>();
         for (String addr : addresses) {
             registries.add(parseURL(addr, defaults));
@@ -592,11 +570,12 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
     }
 我们可以看到传递进来的地址参数还能对应多个地址呢，分割地址符号为|或者；
 
-#### 插曲之UrlUtils.parseURL方法
----
-这个方法才是真正的生成当url的方法，当方法地址是可以集群写的。我们慢慢道来
+#### 插曲之UrlUtils.parseURL方法 ####
 
-	 public static URL parseURL(String address, Map<String, String> defaults) {
+---
+这个方法才是真正的生成当url的方法，当然方法地址可以有很多形式的写法。我们慢慢道来
+
+    public static URL parseURL(String address, Map<String, String> defaults) {
         if (address == null || address.length() == 0) {
             return null;
         }
@@ -617,23 +596,6 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
                 url += "?" + Constants.BACKUP_KEY + "=" + backup.toString();
             }
         }
-        String defaultProtocol = defaults == null ? null : defaults.get("protocol");
-        if (defaultProtocol == null || defaultProtocol.length() == 0) {
-            defaultProtocol = "dubbo";
-        }
-        String defaultUsername = defaults == null ? null : defaults.get("username");
-        String defaultPassword = defaults == null ? null : defaults.get("password");
-        int defaultPort = StringUtils.parseInteger(defaults == null ? null : defaults.get("port"));
-        String defaultPath = defaults == null ? null : defaults.get("path");
-        Map<String, String> defaultParameters = defaults == null ? null : new HashMap<String, String>(defaults);
-        if (defaultParameters != null) {
-            defaultParameters.remove("protocol");
-            defaultParameters.remove("username");
-            defaultParameters.remove("password");
-            defaultParameters.remove("host");
-            defaultParameters.remove("port");
-            defaultParameters.remove("path");
-        }
         boolean changed = false;
         URL u = URL.valueOf(url);
         String protocol = u.getProtocol();
@@ -643,15 +605,37 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
         int port = u.getPort();
         String path = u.getPath();
         Map<String, String> parameters = new HashMap<String, String>(u.getParameters());
-        if ((protocol == null || protocol.length() == 0) && defaultProtocol != null && defaultProtocol.length() > 0) {
+        Map<String, String> defaultParameters = defaults == null ? null : new HashMap<String, String>(defaults);
+        String defaultProtocol = null, defaultUsername = null, defaultPassword = null, defaultPath = null;
+        int defaultPort = 0;
+        if (defaultParameters != null) {
+            defaultParameters.remove("host");
+            defaultProtocol = defaultParameters.remove("protocol");
+            defaultUsername = defaultParameters.remove("username");
+            defaultPassword = defaultParameters.remove("password");
+            defaultPort = StringUtils.parseInteger(defaultParameters.remove("port"));
+            defaultPath = defaultParameters.remove("path");
+            for (Map.Entry<String, String> entry : defaultParameters.entrySet()) {
+                String key = entry.getKey();
+                String defaultValue = entry.getValue();
+                if (StringUtils.isNotEmpty(defaultValue) && StringUtils.isEmpty(parameters.get(key))) {
+                    changed = true;
+                    parameters.put(key, defaultValue);
+                }
+            }
+        }
+        if ((StringUtils.isEmpty(protocol))) {
             changed = true;
+            if (StringUtils.isEmpty(defaultProtocol)) {
+                defaultProtocol = "dubbo";
+            }
             protocol = defaultProtocol;
         }
-        if ((username == null || username.length() == 0) && defaultUsername != null && defaultUsername.length() > 0) {
+        if ((StringUtils.isEmpty(username)) && StringUtils.isNotEmpty(defaultUsername)) {
             changed = true;
             username = defaultUsername;
         }
-        if ((password == null || password.length() == 0) && defaultPassword != null && defaultPassword.length() > 0) {
+        if ((StringUtils.isEmpty(password)) && StringUtils.isNotEmpty(defaultPassword)) {
             changed = true;
             password = defaultPassword;
         }
@@ -664,51 +648,33 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
                 port = 9090;
             }
         }
-        if ((path == null || path.length() == 0) && defaultPath != null && defaultPath.length() > 0) {
+        if ((StringUtils.isEmpty(path)) && StringUtils.isNotEmpty(defaultPath)) {
             changed = true;
             path = defaultPath;
-        }
-        if (defaultParameters != null && defaultParameters.size() > 0) {
-            for (Map.Entry<String, String> entry : defaultParameters.entrySet()) {
-                String key = entry.getKey();
-                String defaultValue = entry.getValue();
-                if (defaultValue != null && defaultValue.length() > 0) {
-                    String value = parameters.get(key);
-                    if (value == null || value.length() == 0) {
-                        changed = true;
-                        parameters.put(key, defaultValue);
-                    }
-                }
-            }
         }
         if (changed) {
             u = new URL(protocol, username, password, host, port, path, parameters);
         }
         return u;
     }
-代码老长老长，但是做的事情还是比较简单的，
+代码老长老长，但是做的事情还是比较简单的:
 1. 对于url能够够找到://这样的符号的，就算你是合法地址了(当然程序依旧可能出错的)。
 2. 对于地址拆分，使用，分割。分割后的数组第一个元素，其他作为backup追加到后面
-3. 获取map中的 protocol，username，password，path, port
-4. 移除map中的 protocol，username，password，path, port，host元素
-5. 使用url字符串获得URL类型的u，方法**URL.valueOf(url)**
-6. 从url中获得 protocol，username，password，host，port，path，和其他信息的parameters(map)
-7. 在url中上述配置不存在的情况下，使用map中付给上述配置
-8. 对parameters的处理
-	1. 遍历map如果parameters不存在相应的键值对，就更新上去。存在就不操作。
-9. 生成新的URL
+3. 使用地址构建一个URL，使用方法**URL.valueOf(url)**，然后补上相关信息
+4. 移除map中的 protocol，username，password，path, port，host元素,取得默认值，剩余的map的kv用来补充url的参数信息，前面的都是特别的信息。
+5. 从url中获得 protocol，username，password，host，port，path，和其他信息的parameters(map)
+6. 在url中上述配置不存在的情况下，使用map中的参数信息来补充，其他信息也是一样,并设定修改标记。
+7. 返回新的url，如果修改过的话
 
-虽然逻辑很简单但是一点也不好理解，重要的是，还有一个很重要的方法
+这里的逻辑还是比较简单的，简单来说就是构建url的操作，其中还有一个值得注意的地方，也就是字符串直接生成URL类型的，也就是上面的第3点加粗的地方。
 
+#### 插曲之UrlUtils.valueOf方法 ####
 
-#### 插曲之UrlUtils.valueOf方法
 --- 
 该方法将解析字符串到URL格式。
 
 	 public static URL valueOf(String url) {
-        if (url == null || (url = url.trim()).length() == 0) {
-            throw new IllegalArgumentException("url == null");
-        }
+        //入参的校验
         String protocol = null;
         String username = null;
         String password = null;
@@ -778,13 +744,14 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
 - file:/codeL:123456@127.0.0.1:2189/context/path?version=1.0.0&application=morgan
 - codeL:123456@127.0.0.1:2189/context/path?version=1.0.0&application=morgan
 
-#### 小结
+#### 小结 ####
 
 ----------
 
 到这里对registry生成的url操作就结束了，但是服务还没有导出，现在我们继续来看。
 
-#### doExportUrlsFor1Protocol
+#### doExportUrlsFor1Protocol ####
+
 ---
 该方法是完整URL生成之后，进一步操作，也就是根据协议配置类（protocolConfig）和注册url列表导出服务
 
@@ -1048,7 +1015,7 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
 
 对于我们来说，第三种方式是最复杂的情况，自然也包含了前两者欠款，现在我们就探究第三种方式。
 
-#### romete的暴露方式
+#### romete的暴露方式 ####
 
 ----------
 
@@ -1083,24 +1050,9 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
 	- 尝试从注册的url中发掘监控的url，对有注册中心的配置来说，监控url应该尽量配置
 	- 尝试将监控url，加入到协议配置url中，通过（monitor，监控url）：该监控url会进行编码
 	- 将协议配置url，加入到注册配置url中，桶过(export,协议配置url)：该协议配置url会进行编码
-	- 
 
+#### 远程暴露服务的细节逻辑 ####
 
-
-#### 暴露服务
----
-该部分依旧是doExportUrlsFor1Protocol的一部分，但是到了现在是真正的暴露服务了，上面大篇幅只是为了生成相应的元信息。 
-
-- 校验url中的scope，对于scope为none是不暴露的，也就结束了。
-	- 对于scope为local本地暴露，直接使用url，不需要注册中心
-		- 暴露方法**exportLocal(url)**
-	- 对于scope为remote远程暴露
-		- registryURL存在，且配置协议类中设定的是允许使用注册中心
-		- 不使用注册中心，典型的是直连暴露
-
-上面就是真正的暴露，包含三种情况，但基本上都是一样的思路。本质上都使用元信息，该元信息是用URL来封装的。我们针对最为复杂的远程暴露来做解释。
-
-#### 远程暴露服务
 ---
 1. 追加协议URL的信息
 	- 放置key：dynamic，v:registryURL.getParameter("dynamic")
@@ -1141,7 +1093,7 @@ appendParameters方法到这里就说明完毕了，值得说明的最后一步�
 
 6. 使用Proxy$Adaptive将获得的Invoker导出实现服务暴露
 
+#### 总结 ####
 
-
-				
-
+----
+到这里整体的介绍就完成了，具体的导出我们下一篇再见。

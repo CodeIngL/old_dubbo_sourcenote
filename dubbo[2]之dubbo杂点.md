@@ -1,9 +1,10 @@
-##  dubbo 杂点 ##
+## dubbo 杂点 ##
+
 dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的零散但很重要的知识，上一篇**dubbo配置**我们留的疑问我们也将在该篇文章中一一解答。
 
 虽然是杂点，但是只是名字上的而已，知识点还是比较重要的，这里会引出一个jdk中存在的一个概念。阅读的时候，读者应该尽量参考源码，[dubbo源码地址](http://192.168.110.114/laihj/dubbo "dubbo源码地址")。源码加上了相关的注释。
 
-###dubbo复杂配置类
+### dubbo复杂配置类 ###
 ---
 **dubbo配置**一文，我们已经向读者介绍了什么是**复杂配置类**，这里我们再次从服务提供者的角度来说明，消费方类似:
 
@@ -11,11 +12,11 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 	- 提供者必须使用的复杂配置类
 		- **复杂类属性之一**：
 	
-			    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+			  private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
 上一篇文章中，对于上面的代码，我们让读者留有印象即可，而现在正是我们本文议论的出发点，本文也是围绕着该行代码展开。
 
-### 超级重要的ExtensionLoader类 ###
+### ExtensionLoader类 ###
 ---
 上面一行代码中我们注意到这样一个类**ExtensionLoader**。 在dubbo框架中，这个类地位举足轻重，dubbo也是依靠该类进行扩展，我们本章也就是围绕着这个类展开。在这里，我们首先给它取个名字:**扩展加载器类**。
 
@@ -45,14 +46,13 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
         }
         return loader;
     }
-对于实现源码，读者可以一眼看出是缓存操作，重点**EXTENSION_LOADERS**这个缓存结构和新建缓存对象 **new ExtensionLoader<T>(type)**  
+对于实现源码，读者不难看出是缓存操作，重点**EXTENSION_LOADERS**这个缓存结构和新建缓存对象 **new ExtensionLoader<T>(type)**  
 
 **EXTENSION_LOADERS**是**类属性**，说明如下:
 
-	//全局，缓存了interface（这个class特指interface），与ExtensionLoader（interface的特殊实现类）的映射
+	//缓存了interface（这个class特指interface），与ExtensionLoader（interface的特殊实现类）的映射
     ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<>();
 也是就是说对于泛型T，**EXTENSION_LOADERS**结构缓存了T和T类型的扩展加载器。同时这个T必须是接口类型。
-
 
 
 #### 重要方法**getAdaptiveExtension** ####
@@ -78,9 +78,9 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
     }
 同样读者依然可以很明显的看出操作缓存的逻辑。因此我们需要的关注也就很明显了
 
-1. 一是缓存结构**cachedAdaptiveInstance**，
+1. 缓存结构**cachedAdaptiveInstance**，
 
-2. 二是新建缓存对象的方法**createAdaptiveExtension**    
+2. 新建缓存对象的方法**createAdaptiveExtension**    
 
 对于**cachedAdaptiveInstance**它是**对象属性**，先不做详细介绍，读者只要记住这是一个缓存属性。
 
@@ -126,17 +126,17 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 
 - 字段 **cachedClasses**是**对象属性**，跟之前**cachedAdaptiveInstance**一样，读者先记住是缓存属性
 
-- 方法	**loadExtensionClasses**，其功能主要实现加载相关实现类，新建为缓存对象
+- 方法 **loadExtensionClasses**，其功能主要实现加载相关实现类，新建为缓存对象
 
 #### 超级重点方法**loadExtensionClasses** ####
 --- 
 	private Map<String, Class<?>> loadExtensionClasses() {
-        
-		/*
-		...省略部分代码
-		获得具体T类型（type）上的@SPI注解，并尝试
-		完成缓存属性**cachedDefaulName**值的设置，其值为@SPI的value值
-		*/
+
+        /*
+        ...省略部分代码
+        获得具体T类型（type）上的@SPI注解，并尝试
+        完成缓存属性**cachedDefaulName**值的设置，其值为@SPI的value值
+        */
 
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
         loadFile(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
@@ -148,9 +148,9 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 首先loadFile的第二个参数，也就是配置文件路径为
 
 - 所有jar包中的资源文件，文件路径:
-	1. **"META-INF/dubbo/internal/"+泛型T的具体实现的全类名**
-	2. **"META-INF/dubbo/"+泛型T的具体实现的全类名**
-	3. **"META-INF/services/"+泛型T的具体实现的全类名**
+	1. **"META-INF/dubbo/internal/"+泛型T的全类名**
+	2. **"META-INF/dubbo/"+泛型T的全类名**
+	3. **"META-INF/services/"+泛型T的全类名**
 
 > loadfile方法内部做了很多操作，总体是完成了配置文件中的内容，到内存缓存属性的生成和设置。我们接下来以简要的文字描述其功能。
 
@@ -165,15 +165,14 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 	1. 将cachedAdaptiveClass设置为该类型
 	2. n次loadFile的调用，对应T具体类型，只允许一个带有**@Aaptive**的实现
 	3. dubbo中默认只有AdaptiveCompiler，AdaptiveExtensionFactory符合
-	4. 其他T类型，都会程序**createAdaptiveExtensionClass方法**生成。   
+	4. 其他T类型，在程序中都会使用**createAdaptiveExtensionClass方法**生成。   
 
 对T的实现类不带有注解@Adaptive的处理:
 
 	1. 实现类有构造函数,这些类型被加入缓存属性**cachedWrapperClasses**中
 		- 例如A是T的实现，A存在构造签名: public A(T t){...}
 
-对T的普普通通的实现类的处理	:
-
+对T的普普通通的实现类的处理:
 	1. 带有注解@Activate的实现类，将其name，类上注解加入缓存属性cachedActivates中
 	2. 将实现类型和name加入缓存cachedNames中	
 	3. 返回name，v类型组成map
@@ -186,20 +185,18 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 
 对于第一种方式，我们这里提一下，这种已经被废弃了。
 
-	- 会尝试使用实现类上的注解@Extension的value值，如果value是空串，尝试用**小写名**,如果提取不了**小写名**就报错
-	- 没有注解则尝试用**小写名**,如果提取不了**小写名**，则用类名小写
+- 会尝试使用实现类上的注解@Extension的value值，如果value是空串，尝试用**小写名**,如果提取不了**小写名**就报错
+- 没有注解则尝试用**小写名**,如果提取不了**小写名**，则用类名小写
 	
-小写名提取规则：ex，type=Inovker，v=SimpleInovker。小写名等价于simple，两者，后缀必须匹配。
+**小写名**提取规则：ex，type=Inovker，v=SimpleInovker。小写名等价于simple，两者，后缀必须匹配。
 
-对于第二种方式，是正常的使用方式
+对于第二和第三种方式，都是使用正常的方式
 
-对于第三种方式，也是正常的使用方式
-
-最终得到的k会被‘,’分割多个形成名字数组，这个也仅仅给**T的普普通通的实现类**使用
+最终得到的k会被‘,’分割多个形成名字数组，然而这种方式仅仅给**T的普普通通的实现类**使用
 
 ---
 
-### name的选择
+### name的选择 ###
 
 有多个name，**T的普普通通的实现类**使用的name也是有选择的。
 
@@ -208,9 +205,9 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 对于3方式，任意执行loadFile方法，每一个name都放置一次。  
 
 ---
-至此loadFile加载配置文件到内存类类型的设置就完成了。    
+至此loadFile加载配置文件到内存类类型的设置就完成了。
 	
-回头看**loadExtensionClasses**，我们看到执行了多次    loadFile，且用一个Map,也就是loadFile的第一个参数，保存了**T的普普通通的实现类**方式3的结果。
+回头看**loadExtensionClasses**，我们看到执行了多次    loadFile，且用一个Map,也就是loadFile的第一个参数，保存了**T的普普通通的实现类**也就是方式3的结果。
 
 再从方法栈向外跳出，也就是**getExtensionClasses**方法里面，我们看到了这个map赋值给了缓存属性**cachedClasses**
 
@@ -224,27 +221,27 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 
 - **cachedAdaptiveClass**:@Adaptive的实现类类型，具体T类型的所有实现，只允许一个带有@Adaptive注解
 
-- **cachedWrapperClasses**：上面诸如例子: public A(T t){}的实现类
+- **cachedWrapperClasses**：诸如: public A(T t){}的实现类
 
 - **cachedActivates**：单次loadFile后，name和带有注解@Activates的实现类的映射
 
 - **cachedNames**:见**name的选择**方式2
 
->**tip**:这个方法调用，保存的只是类型，而不是实例。 
-
+>**tip**:这个方法调用，保存和构建的只是类型，而不是实例。 
 
 
 #### 再谈**getAdaptiveExtensionClass**
 ---
+
 上面我们介绍了基石操作**getExtensionClasses**，现在回顾最早出现的问题，为了读者阅读方便，我再次粘贴了源码
 
-		private Class<?> getAdaptiveExtensionClass() {
-	        getExtensionClasses();
-	        if (cachedAdaptiveClass != null) {
-	            return cachedAdaptiveClass;
-	        }
-	        return cachedAdaptiveClass = createAdaptiveExtensionClass();
-	    }
+	private Class<?> getAdaptiveExtensionClass() {
+        getExtensionClasses();
+        if (cachedAdaptiveClass != null) {
+            return cachedAdaptiveClass;
+        }
+        return cachedAdaptiveClass = createAdaptiveExtensionClass();
+    }
 我们可以看到**getAdaptiveExtensionClass**就是返回缓存属性**cachedAdaptiveClass**，再根据我们上文所说，默认类上带有
 @Adaptive注解的只有
 
@@ -253,9 +250,10 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 因此，其他的扩展都是通过**createAdaptiveExtensionClass**生成的。
 
 
-### createAdaptiveExtensionClass()程序生成代码
+### createAdaptiveExtensionClass()程序生成代码 ###
+
 ---
-上面我们说到除了T类型为，Compiler和ExtensionFactory有配置生成，其他都是程序运行生成，也就是方法**createAdaptiveExtensionClass()**，为什么要程序生成呢。因为有点灵活。因此其代码也是很恶心的，这里我们文字描述。
+上面我们说到除了T类型为Compiler和ExtensionFactory有配置生成，其他都是程序运行生成，也就是方法**createAdaptiveExtensionClass()**，为什么要程序生成呢。因为有点灵活。因此其代码也是很恶心的，这里我们文字描述。
 
 代码逻辑在**createAdaptiveExtensionClassCode**中
 
@@ -277,7 +275,8 @@ dubbo杂点，是dubbo源码分析的第2篇文章,该文描述的是一些的�
 	- 对该参数进行判空校验，
 	- 使用局部变量methodName获得该参数的getMethodName()返回值
 
-### 获得最终扩展名
+### 获得最终扩展名 ###
+
 ---
 Adaptive的实现类，最终是通过一些信息生成获得，最终的普通实现类。代码最重要的也就是如何获得普通实现类。本点是继续上面的特殊实现:
 
@@ -296,27 +295,25 @@ Adaptive的实现类，最终是通过一些信息生成获得，最终的普通
 - 使用局部变量**extension**，通过T类型具体扩展加载类getExtension()获得最终的扩展类（**T的普通实现**）
 - 调用扩展类的的该实现方法，返回方法返回值。
 
-至此，动态生成的cachedAdaptiveClass已经完成，这里缺少编译，我们一笔带过，dubbo至此jdk和javassistComplier，默认是后者，一般我们也不会对其扩展。
+至此，动态生成的cachedAdaptiveClass已经完成，这里缺少编译，我们一笔带过，dubbo支持jdk和javassistComplier，默认是后者，一般我们也不会对其扩展。
 
-### 小结
+### 小结 ###
+
 ---
 我们上面说了很多，也描绘了很多事情，最终都只是完成了配置文件到类类型的加载。类型实例化也没有讨论，
 现在让我们把目光转向最开始的地方，也就是**getAdaptiveExtension**,本文的最开始部分。从方法签名来看，
 返回是实例对象而不是类对象。然后我们引出了**createAdaptiveExtension**方法。
 
 	 private T createAdaptiveExtension() {
-        try {
-            //获得封装扩展的实例，并注入
-            return injectExtension((T) getAdaptiveExtensionClass().newInstance());
-        } catch (Exception e) {
-            throw new IllegalStateException("Can not create adaptive extenstion " + type + ", cause: " + e.getMessage(), e);
-        }
+        //获得封装扩展的实例，并注入。忽略了try，catch代码
+        return injectExtension((T) getAdaptiveExtensionClass().newInstance());
     }
 为了读者阅读的简便性，我们再次贴出。我们看到了我们熟悉的getAdaptiveExtensionClass()方法，也就是返回缓存属性cachedAdaptiveClass。
 
 一行代码我们看出，她对cachedAdaptiveClass持有的类类型进行实例化，然后作为参数传入方法**injectExtension**中。
 
-###重点方法之**injectExtension**
+### 重点方法之**injectExtension** ###
+
 ---
 这是个极为重要的方法，他的主要功能就是完成实例的“初始化”（相关的属性的注入如同spring中的bean有多个阶段）。代码如下:
 
@@ -359,12 +356,14 @@ Adaptive的实现类，最终是通过一些信息生成获得，最终的普通
 4. 反射将的工厂中得到的对应实例注入。
 5. 返回本实例。
 
-### 最后的**getAdaptiveExtension**
+### 最后的**getAdaptiveExtension** ###
+
 ---
 上述过程之后，cachedAdaptiveClass实例化出来的对象完成，完整的初始化，接着完成了缓存属性****cachedAdaptiveInstance****，读者读到这里因而能知道，这个过程是递归的，如同上面所说，读者二次开发
 需要注意循环依赖的问题。如果是Spring暴露出来的，那么没有任何问题。
 
-### 再谈dubbo复杂配置类
+### 再谈dubbo复杂配置类 ###
+
 ---
 到此，最开始我所说的一行代码已经解决，我们这里重新贴一遍代码
 
@@ -372,7 +371,7 @@ Adaptive的实现类，最终是通过一些信息生成获得，最终的普通
 	- 提供者必须使用的复杂配置类
 		- **复杂类属性之一**：
 	
-			    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+			  private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
 其做的工作我们都说明了，唯一遗漏的几点:
 
@@ -380,11 +379,10 @@ Adaptive的实现类，最终是通过一些信息生成获得，最终的普通
 
 2. protocol持有的是Protocl$Adaptive，其他复杂类属性类似
 
-3. 想要看具体的程序生成Adaptive扩展，调试应用的时候，扣出来。
+3. 想要看具体的程序生成Adaptive扩展，调试应用的时候，请扣出来。
 
 ### 总结
 ---
 该文中，我们只围绕了复杂配置类的复杂类属性展开，由此迁出了dubbo的配置运行流程以及知识点。
 正如我最后所说，这些仅仅操作发生在ServiceConfig类的字节码被装载进JVM就开始，真正的服务开启，消费开发还远着呢。
 下一篇，我们将揭开dubbo导出服务之旅。
-

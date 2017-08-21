@@ -1,4 +1,5 @@
 ## dubbo配置
+
 dubbo对我们来说是一款比较优秀的RPC框架(十分优秀)。对dubbo来说，其中分成了很多模块，有些模块不可否认写的很好，唯一遗憾的就是缺少注解说明。   
 
 dubbo配置模块，是dubbo众多的模块之一，当然也是dubbo框架核心模块之一。  
@@ -6,7 +7,7 @@ dubbo配置模块，是dubbo众多的模块之一，当然也是dubbo框架核�
 该篇文章作为dubbo源码分析的第一篇文章,我们将通过对配置模块的简单介绍来使读者由浅入深的接触整个dubbo源码。
 
 >**tip**：***framework conf is not only for spring***  
->dubbo推荐使用Spring来工作，但spring只是dubbo运行的壳子，脱离了spring依旧能够运行
+>dubbo推荐结合spring来进行工作，但spring只是dubbo运行的壳子,其本身并不依赖spring
 
 
 #### dubbo-config-api
@@ -34,24 +35,24 @@ dubbo中唯一的两个**复杂配置类**，也正是dubbo服务，服务方和
 		- 复杂的非配置属性：
 			
 
-			    //Protocl$Adaptive单例唯一
-			    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+			  //Protocl$Adaptive单例唯一
+			  private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 			
-			    //ProxyFactory$Adaptive单例唯一
-			    private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
+			  //ProxyFactory$Adaptive单例唯一
+			  private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
 - ReferenceConfig（消费方的入口）
 	- 消费者必须使用的配置类
 		- 复杂的非配置属性：
 				
-				//Protocl$Adaptive单例唯一
-			    private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+			  //Protocl$Adaptive单例唯一
+			  private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 				
-				//Cluster$Adaptive单例唯一
-			    private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
+			  //Cluster$Adaptive单例唯一
+			  private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
 			    
-				//ProxyFactory$Adaptive单例唯一
-			    private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
+			  //ProxyFactory$Adaptive单例唯一
+			  private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
 读者请先**忽略**这些代码，只需要对这两个复杂配置类有所保留印象。详细的解释我们将会慢慢展开
 
@@ -80,10 +81,8 @@ dubbo支持不依赖spring框架而独立使用，当然这样你需要以编码
 		protocol.setPort(12345);
 		protocol.setThreads(200);
 		 
-		// 注意：ServiceConfig为重对象，内部封装了与注册中心的连接，以及开启服务端口
-		 
 		// 服务提供者暴露服务配置
-		ServiceConfig<XxxService> service = new ServiceConfig<XxxService>(); // 此实例很重，封装了与注册中心的连接，请自行缓存，否则可能造成内存和连接泄漏
+		ServiceConfig<XxxService> service = new ServiceConfig<XxxService>(); 
 		service.setApplication(application);
 		service.setRegistry(registry); // 多个注册中心可以用setRegistries()
 		service.setProtocol(protocol); // 多个协议可以用setProtocols()
@@ -113,7 +112,7 @@ dubbo-config-spring包同样也是是dubbo配置模块的子包，该包的目�
 这里我们先列举，在spring应用能够使用的dubbo提供的自定义标签(来自官网)。
 
 - dubbo标签:
-	1. <dubbo:service/>
+	- <dubbo:service/>
 	- <dubbo:reference/>
 	- <dubbo:protocol/>
 	- <dubbo:registry/>
@@ -129,7 +128,7 @@ dubbo-config-spring包同样也是是dubbo配置模块的子包，该包的目�
 为了更好给同学直观的感受，我再贴一份config-api中的配置类
 
 - 能够实例化的配置类：
-	1. ServiceConfig
+	- ServiceConfig
 	- ReferenceConfig
 	- ProtocolConfig
 	- RegistryConfig
@@ -142,8 +141,8 @@ dubbo-config-spring包同样也是是dubbo配置模块的子包，该包的目�
 	- ConsumerConfig
 	
 两份进行比较同学应该有更加直观的感受。    
-除了第**12**项**<dubbo:parameter/>**，其他似乎都是一一对应。    
-事实上**<dubbo:parameter/>**引用官方的话:用于配置自定义参数，该配置项将作为扩展点设置自定义参数使用。  
+除了<dubbo:parameter/>，其他似乎都是一一对应。    
+事实上<dubbo:parameter/>引用官方的话:用于配置自定义参数，该配置项将作为扩展点设置自定义参数使用。  
 本质上其对应于某几个**简单配置类**内部的一个map配置属性。
 
 #### config配置模块小结
