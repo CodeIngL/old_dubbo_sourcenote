@@ -1,11 +1,12 @@
 ## dubbo消费方 ##
-有了前面的文章的铺垫，现在我们从消费方的角度来看dubbo的执行，之前我们将的都是服务方的故事
+
+前面我们已经简单的梳理了dubbo服务方的整个逻辑，现在我们从消费方的角度来观察下dubbo的另一半逻辑。
 
 ### 消费方复杂配置类 ###
 
 ----------
 
-废话不多说，假定认为读者对dubbo已经有比较深入的了解。
+和我们之前对服务方的介绍一样，我们从消费方的复杂配置类入手，然后层层拨开dubbo消费方做的迷雾，如果读者对dubbo不是很熟悉，不能对服务方了然于胸的话，建议先看前几篇文章。
 
 ReferenceConfig（消费方的入口）
 
@@ -19,13 +20,14 @@ ReferenceConfig（消费方的入口）
 
 			private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
-对于这些扩展配置的代码，读者应该相当的熟悉了，不熟悉的读者请阅读前面的文章。
-现在我们把目光转移到消费方的相关启动代码上
+对于这些扩展配置项的代码，看过前几篇文章的童鞋应该相当的熟悉了，不熟悉的读者请阅读前面的文章。
+
+现在我们把目光转移到消费方的相关启动代码上。
 
 ### 引用入口:get() ###
 
 ----------
-引用入口是dubbo使用api方式编程需要调用的方法，返回一个rpc接口的包装，通过返回值，开发者就可以黑盒的方式进行rpc调用了。源码如下:
+引用入口:get();是dubbo使用api方式编程需要调用的方法，返回一个rpc接口的包装，通过返回值，开发者就可以黑盒的方式进行rpc调用了。源码如下:
 
     public synchronized T get() {
         if (destroyed) {
@@ -51,7 +53,7 @@ ReferenceConfig（消费方的入口）
 
 		//3. 对 (consumer:可选)**简单配置类**进行校验
 
-		//4. 使用**appendProperties**完成自己本身基本属性的设置
+		//4. 
 
 		//5. 对(generic：可选)尝试设置
 		//----generic为null的情况下，尝试使用consumer中的配置
@@ -80,58 +82,209 @@ ReferenceConfig（消费方的入口）
         ref = createProxy(map);	
     }
 
-我们主要采用注释的方法介绍整个方法，原因和之前介绍服务方一样:方法内涉及代码比较长。现在我们选择其中关键点进行说明
+在这里我们先采用注释的策略介绍整个方法，然后将源码串入其中,原因自然和我们之前介绍服务方一样:方法内实现逻辑代码比较长。
 
+### 第1点的介绍 ###
 
-----------
+---
+第一点也就是，对初始化标志进行校验。代码如下:
 
-第7点（尝试从系统以及配置文件中获得信息来构建url字符串）的说明，首先贴出相关代码:
+     if (initialized) {
+          return;
+     }
+     initialized = true;
 
-        String resolve = System.getProperty(interfaceName);
-        String resolveFile = null;
-        if (resolve == null || resolve.length() == 0) {
-            resolveFile = System.getProperty("dubbo.resolve.file");
-            if (resolveFile == null || resolveFile.length() == 0) {
-                File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
-                if (userResolveFile.exists()) {
-                    resolveFile = userResolveFile.getAbsolutePath();
-                }
-            }
-            if (resolveFile != null && resolveFile.length() > 0) {
-                Properties properties = new Properties();
-                FileInputStream fis = null;
-                try {
-                    fis = new FileInputStream(new File(resolveFile));
-                    properties.load(fis);
-                } catch (IOException e) {
-                    throw new IllegalStateException("Unload " + resolveFile + ", cause: " + e.getMessage(), e);
-                } finally {
-                    try {
-                        if (null != fis) fis.close();
-                    } catch (IOException e) {
-                        logger.warn(e.getMessage(), e);
-                    }
-                }
-                resolve = properties.getProperty(interfaceName);
+初始化的过得服务引用自然需要一个标志来说明其初始化，这一点详细读者很容易理解。
+
+### 第2点的介绍 ###
+
+---
+第二点也就是，对（interfaceName:必填）接口名字配置项校验。代码如下:
+
+    //检验接口名(接口名是必填的配置项)
+    if (interfaceName == null || interfaceName.length() == 0) {
+        throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
+    }
+
+interfaceName属性的含义代表的意义，读者应该很熟悉了，和服务方一样，其代表了引用的接口。
+
+### 第3点的介绍 ###
+
+---
+第3点也就是， 对 (consumer:可选)**简单配置类**进行校验。代码如下:
+
+    if (consumer == null) {
+        consumer = new ConsumerConfig();
+    }
+    appendProperties(consumer);
+参照源码的童鞋可能看到是checkxxx，这里我将其实现贴出来，细心读者应该没有这样的疑惑。
+这里和服务方一致，对于可选，总是能在用户不配置的情况下，自动创建出来，当然创建出来的对象的属性的填充自然交给了我们熟悉的方法**appendProperties**
+
+### 第4点的介绍 ###
+
+---
+第4点也就是，使用**appendProperties**完成自己本身基本属性的设置。代码如下:
+
+    appendProperties(this);
+本身配置类某些基本属性还是需要填充或者设置，同样和服务方一致。
+
+### 第5点的介绍 ###
+
+---
+第5点也就是，对(generic：可选)尝试设置。代码如下:
+
+    if (generic == null) {
+        if (consumer != null) {
+           setGeneric(consumer.getGeneric());
+        }
+    }
+这一点也很简单，当复杂配置类的某些属性不存在时，可以采用其持有的配置类中获取，同样这里和服务方类似
+
+### 第6点的介绍 ###]
+
+---
+第6点也就是，对(generic：可选)进行处理。代码如下:
+
+    if (ProtocolUtils.isGeneric(generic)) {
+        interfaceClass = GenericService.class;
+    } else {
+        interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
+        checkInterfaceAndMethods(interfaceClass, methods);
+    }
+自然这里的逻辑也不是特别的复杂，对于泛化调用，interfaceClass自然是GenericService。同时其interfaceName是*。对于不是泛化调用，尝试使用interfaceName获得实际的类类型，同时还检查了interfaceClass和methods这个代表了方法配置的配置项，这一点我们等下单独来说。
+
+### 第7点的介绍 ###
+
+---
+第7点也就是，尝试从系统以及配置文件中获得信息来构建url字符串的说明。相关代码如下:
+
+    String resolve = System.getProperty(interfaceName);
+    String resolveFile = null;
+    if (resolve == null || resolve.length() == 0) {
+        resolveFile = System.getProperty("dubbo.resolve.file");
+        if (resolveFile == null || resolveFile.length() == 0) {
+            File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
+            if (userResolveFile.exists()) {
+                resolveFile = userResolveFile.getAbsolutePath();
             }
         }
-        if (resolve != null && resolve.length() > 0) {
-            url = resolve;
-			//打印日志
+        if (resolveFile != null && resolveFile.length() > 0) {
+            Properties properties = new Properties();
+            FileInputStream fis = null;
+            fis = new FileInputStream(new File(resolveFile));
+            properties.load(fis);
+            if (null != fis) fis.close();
+            resolve = properties.getProperty(interfaceName);
         }
-消费方持有一个String型的url(可选；下文我们统称**字符串url**)，消费方会尝试构建出来该字符串url。
+    }
+    if (resolve != null && resolve.length() > 0) {
+        url = resolve;
+    }
+
+这里就比较重要了，我们需要展开在这里的逻辑介绍，首先消费方持有一个String型的url(可选；下文我们统称**字符串url**)，这里的逻辑就是为了尝试获取这个字符串url的配置值。
 
 1. 尝试使用属性interfaceName值做为key从系统环境中直接查找其值。
 	1. 如果存在直接作为字符串url的值
 2. 尝试从配置文件中获得url，使用属性interfaceName值做为key从配置文件对应的映射中获得**字符串url**。那么配置文件如何获得?
 	1. 尝试通过使用dubbo.resolve.file做为key在系统中查找其文件路径
-	2. 尝试使用用户目录下的dubbo-resolve.properties作为配置文件，构建配置文件的路径
+	2. 尝试使用用户目录下的dubbo-resolve.properties作为配置文件，获得其绝对路径
 
-----------
 
-第11点（构建关键的url（元信息）的参数映射）的说明
+### 第8点的说明 ###
 
-服务方导出中，我们也提到了构建相关的参数映射，与这里基本相似。现在我们慢慢探究这个过程。首先先贴出相关代码:
+---
+第8点也就是，尝试从嵌套的简单配置中，完成配置的转移，即完成本身的配置类属性配置。代码如下:
+
+    if (consumer != null) {
+        if (application == null) {
+            application = consumer.getApplication();
+        }
+        if (module == null) {
+            module = consumer.getModule();
+        }
+        if (registries == null) {
+            registries = consumer.getRegistries();
+        }
+        if (monitor == null) {
+            monitor = consumer.getMonitor();
+        }
+    }
+    if (module != null) {
+        if (registries == null) {
+            registries = module.getRegistries();
+        }
+        if (monitor == null) {
+            monitor = module.getMonitor();
+        }
+    }
+    if (application != null) {
+        if (registries == null) {
+            registries = application.getRegistries();
+        }
+        if (monitor == null) {
+            monitor = application.getMonitor();
+        }
+    }
+
+对于这里，相信读者是否有很强烈的熟悉感，不错，在服务方的暴露代码里，我们基本上能看到一模一样的配置。因此这里就不详细说明了，忘记的童鞋，请阅读之前的文章。
+
+### 第9点的介绍 ###
+
+---
+第9点也就是，对 (application:可选)**简单配置类**进行校验。代码如下:
+
+    checkApplication();
+这一点也就更不用说了，简单至极。
+
+### 第10点的介绍 ###
+
+---
+第10点也就是，对属性local和stub的的校验，并生成mock。代码如下:
+
+    protected void checkStubAndMock(Class<?> interfaceClass) {
+        if (ConfigUtils.isNotEmpty(local)) {
+            Class<?> localClass = ConfigUtils.isDefault(local) ? ReflectUtils.forName(interfaceClass.getName() + "Local") : ReflectUtils.forName(local);
+            if (!interfaceClass.isAssignableFrom(localClass)) {
+                //省略代码
+            }
+            ReflectUtils.findConstructor(localClass, interfaceClass);
+        }
+        if (ConfigUtils.isNotEmpty(stub)) {
+            Class<?> localClass = ConfigUtils.isDefault(stub) ? ReflectUtils.forName(interfaceClass.getName() + "Stub") : ReflectUtils.forName(stub);
+            if (!interfaceClass.isAssignableFrom(localClass)) {
+                //省略代码
+            }
+            ReflectUtils.findConstructor(localClass, interfaceClass);
+        }
+        if (ConfigUtils.isNotEmpty(mock)) {
+            if (mock.startsWith(Constants.RETURN_PREFIX)) {
+                String value = mock.substring(Constants.RETURN_PREFIX.length());
+                MockInvoker.parseMockValue(value);
+            } else {
+                Class<?> mockClass = ConfigUtils.isDefault(mock) ? ReflectUtils.forName(interfaceClass.getName() + "Mock") : ReflectUtils.forName(mock);
+                if (!interfaceClass.isAssignableFrom(mockClass)) {
+                    //省略代码
+                }
+                mockClass.getConstructor(new Class<?>[0]);
+            }
+        }
+    }
+
+这里也是一行代码，和上面一样，粘贴了其实现，做的事情也是比较的简单，对local，stub，mock三个属性进行校验，如果开发人员配置了的话。 
+
+1. 对local进行校验
+    1. 尝试加载其代表的类型到vm中，检测其构造函数
+2. 对stub进行校验
+    1. 同上
+3. 对mock进行校验
+    1. 对于mock配置为片段代码，则使用MockInvoker去解析
+    2. 否则同上local和mock
+
+### 第11点的介绍 ###
+
+---
+
+第11点也就是，构建关键的url（元信息）的参数映射，代码如下：
 
 	    Map<String, String> map = new HashMap<String, String>();
         map.put(Constants.SIDE_KEY, Constants.CONSUMER_SIDE);
@@ -176,20 +329,23 @@ ReferenceConfig（消费方的入口）
             }
         }
 
-阅读前几篇文章的童鞋，肯定对此相当的眼熟。其逻辑如下:
+这里也和我们之前说的服务端代码十分的类型，甚至基本一样，总得来说，目的是构建url元信息的参数键值对。代码逻辑如下:
 
-	- 放入（side：consumer）代表是消费方（服务方为(side:provider)
-	- 放入（dubbo：2.0.0）版本信息(服务方一致）
-	- 放入（timestamp：当前时间）（服务方一致）
-	- 放入（pid：应用pid）进程信息（服务方一致）
-	- 对通用接口处理(服务方一致）
-	- 放入（interface：interfaceName）
-	- 将application配置类信息放入map中（服务方一致）
-	- 将module配置类信息放入map中（服务方一致）
-	- 将consumer配置类信息放入map中，前缀default（服务方式放入provider配置类)
-	- 将this配置类信息放入map中(服务方一致)
-	- 遍历methods配置类列表，将每个method的配置信息放入map中，前缀方法名(服务方一致)
-	- 对每个method配置类构建，key:"方法名.retry"的键做处理，并删除该键，如果该键的值等于false，将其转换为（"方法名.retries":"0"）放入(服务方一致)
+- 放入（side：consumer）代表是消费方（服务方为(side:provider)
+- 放入（dubbo：2.0.0）版本信息(服务方一致）
+- 放入（timestamp：当前时间）（服务方一致）
+- 放入（pid：应用pid）进程信息（服务方一致）
+- 对非通用接口处理(服务方一致）
+    1. 放入调整的版本信息
+    2. 使用Wrapper包装对应的class,并获得其方法集合
+    3. 根据方法的大小做不同的操作
+- 放入（interface：interfaceName）
+- 将application配置类信息放入map中（服务方一致）
+- 将module配置类信息放入map中（服务方一致）
+- 将consumer配置类信息放入map中，前缀default（服务方式放入provider配置类)
+- 将this配置类信息放入map中(服务方一致)
+- 遍历methods配置类列表，将每个method的配置信息放入map中，前缀方法名(服务方一致)
+    对每个method配置类构建，key:"方法名.retry"的键做处理，并删除该键，如果该键的值等于false，将其转换为（"方法名.retries":"0"）放入(服务方一致)
 
 基本上和服务方的处理一致，当然我们需要说明其不同的地方：
 
@@ -197,78 +353,69 @@ ReferenceConfig（消费方的入口）
 	1. 使用**appendAttributes**对每一个method配置类的信息放入，前缀为group(对应值)/interface(对应值):version。
 	2. 使用**checkAndConvertImplicitConfig**对每一个方法，以及map和attributes进行了处理。
 
+### appendParameters与appendAttributes之间的事情 ###
 
-### appendParameters与appendAttributes ###
-
-----------
+---
 appendAttributes和appendParameters很相像，但做的事情却少多了
 
 	protected static void appendAttributes(Map<Object, Object> parameters, Object config, String prefix) {
-		//校验方法以及获得配置类的方法列表
         for (Method method : methods) {
-            try {
-                String name = method.getName();
-                if ((name.startsWith("get") || name.startsWith("is"))
-                        && !"getClass".equals(name)
-                        && Modifier.isPublic(method.getModifiers())
-                        && method.getParameterTypes().length == 0
-                        && isPrimitive(method.getReturnType())) {
-                    Parameter parameter = method.getAnnotation(Parameter.class);
-                    if (parameter == null || !parameter.attribute())
-                        continue;
-                    String key;
-                    if (parameter != null && parameter.key() != null && parameter.key().length() > 0) {
-                        key = parameter.key();
-                    } else {
-                        int i = name.startsWith("get") ? 3 : 2;
-                        key = name.substring(i, i + 1).toLowerCase() + name.substring(i + 1);
-                    }
-                    Object value = method.invoke(config, new Object[0]);
-                    if (value != null) {
-                        if (prefix != null && prefix.length() > 0) {
-                            key = prefix + "." + key;
-                        }
-                        parameters.put(key, value);
-                    }
+            String name = method.getName();
+            if ((name.startsWith("get") || name.startsWith("is"))
+                    && !"getClass".equals(name)
+                    && Modifier.isPublic(method.getModifiers())
+                    && method.getParameterTypes().length == 0
+                    && isPrimitive(method.getReturnType())) {
+                Parameter parameter = method.getAnnotation(Parameter.class);
+                if (parameter == null || !parameter.attribute())
+                    continue;
+                String key;
+                if (parameter != null && parameter.key() != null && parameter.key().length() > 0) {
+                    key = parameter.key();
+                } else {
+                    int i = name.startsWith("get") ? 3 : 2;
+                    key = name.substring(i, i + 1).toLowerCase() + name.substring(i + 1);
                 }
-            } catch (Exception e) {
-                throw new IllegalStateException(e.getMessage(), e);
+                Object value = method.invoke(config, new Object[0]);
+                if (value != null) {
+                    if (prefix != null && prefix.length() > 0) {
+                        key = prefix + "." + key;
+                    }
+                    parameters.put(key, value);
+                }
             }
         }
     }
+以上就是其方法的代码实现,读者应该能看出其和appendParameter的共同值处，这里其逻辑如下:
 
-以上就是方法的代码实现,逻辑如下
+1. 处理基本类型（基本配置属性）的get或者is方法，尝试从方法上获得注解@Parameter
+1. 排除掉返回值是Object或者有注解并且注解attribute为false的这些方法
+2. 构建key（将存入map:入参），有注解尝试使用注解的key的有效值，否则方法名中提取，例如getCodelDemo，提取为codel.demo
+3. 放射获得基本配置属性值（不一定是String），对于合法的值，将会和key形成组合放入map中，合法值的处理
+    1. 如果前缀存在，为key添加前缀
+    2. 将key值和处理后的基本属性值放入map中
 
-	1. 处理基本类型（基本配置属性）的get或者is方法，尝试从方法上获得注解@Parameter
-	1. 排除掉返回值是Object或者有注解并且注解attribute为false的这些方法
-	2. 构建key（将存入map:入参），有注解尝试使用注解的key的有效值，否则方法名中提取，例如getCodelDemo，提取为codel.demo
-	3. 放射获得基本配置属性值（不一定是String），对于合法的值，将会和key形成组合放入map中，合法值的处理
-		1. 如果前缀存在，为key添加前缀
-		2. 将key值和处理后的基本属性值放入map中
+总之就是构建了一个key和配置类某个属性值的集合，在appendParameter中构建的是一个key和配置类某个属性的string值集合。
 
 ### 插曲之checkAndConvertImplicitConfig ###
 
-----------
-介绍了上面的方法，我们再来看另一个陌生的操作
+---
+介绍了上面其中之一的方法，我们再来看另一个函数的操作，也就是该节标题。
 
 	private static void checkAndConvertImplicitConfig(MethodConfig method, Map<String, String> map, Map<Object, Object> attributes) {
-        //check config conflict
         if (Boolean.FALSE.equals(method.isReturn()) && (method.getOnreturn() != null || method.getOnthrow() != null)) {
             throw new IllegalStateException("method config error : return attribute must be set true when onreturn or onthrow has been setted.");
         }
-        //convert onreturn methodName to Method
         String onReturnMethodKey = StaticContext.getKey(map, method.getName(), Constants.ON_RETURN_METHOD_KEY);
         Object onReturnMethod = attributes.get(onReturnMethodKey);
         if (onReturnMethod != null && onReturnMethod instanceof String) {
             attributes.put(onReturnMethodKey, getMethodByName(method.getOnreturn().getClass(), onReturnMethod.toString()));
         }
-        //convert onthrow methodName to Method
         String onThrowMethodKey = StaticContext.getKey(map, method.getName(), Constants.ON_THROW_METHOD_KEY);
         Object onThrowMethod = attributes.get(onThrowMethodKey);
         if (onThrowMethod != null && onThrowMethod instanceof String) {
             attributes.put(onThrowMethodKey, getMethodByName(method.getOnthrow().getClass(), onThrowMethod.toString()));
         }
-        //convert oninvoke methodName to Method
         String onInvokeMethodKey = StaticContext.getKey(map, method.getName(), Constants.ON_INVOKE_METHOD_KEY);
         Object onInvokeMethod = attributes.get(onInvokeMethodKey);
         if (onInvokeMethod != null && onInvokeMethod instanceof String) {
@@ -282,8 +429,9 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 3. 构建onThrowMethodKey，并尝试将onThrowMethodKey对应的方法放入attributes中
 4. 构建onInvokeMethodKey，并尝试将onInvokeMethodKey对应的方法放入attributes中
 
-----------
+### 最后一点的介绍 ###
 
+---
 最后一点的说明也就是下面的两行代码:
 
 	StaticContext.getSystemContext().putAll(attributes); 
@@ -293,21 +441,20 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 
 ###  消费方服务入口之createProxy ###
 
-----------
-
+---
 在该方法里，将会为相应的rpc接口创建相应的代理，从而在执行的时候调用远程实现，具体我们慢慢道来。
 
 	private T createProxy(Map<String, String> map) {
 
-			//1.对（injvm）标记进行处理
-	
-	        //2.对（isJvmRefer临时变量）进行处理
-	      
-			//3.对 (check)标记进行处理
+        //1.对（injvm）标记进行处理
 
-			//4.创建服务代理
-	
-	}
+        //2.对（isJvmRefer临时变量）进行处理
+        
+        //3.对 (check)标记进行处理
+
+        //4.创建服务代理
+
+    }
 
 创建代理基本就是这个4点过程了。但是就代码本身而言，逻辑还是比较复杂的。
 
@@ -326,13 +473,11 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 代码逻辑还是比较清晰的，当然这里是为第2点服务，变量isJvmRefer将在第二步处理
 
 1. 尝试使用injvm赋值isJvmRefer变量(injvm有值)
-
 2. 尝试使用url属性来决定isJvmRefer的值，url存在，isJvmRefer=false
-
 3. 尝试使用入参map构建临时url获取相关键值来决定isJvmRefer的值
 
 
-第一点isJvmRefer的处理:
+第二点isJvmRefer的处理:
         
 	 if (isJvmRefer) {
             //对内引用
@@ -391,9 +536,8 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 
 ### 对外引用 ###
 
-----------
-
-在服务篇我们提到过url(元信息)的重要性，当然这里也是，重点也就是构建url。我们来看逻辑
+---
+在服务篇我们提到过url(元信息)的重要性，当然这里也是，重点也就是构建url。我们来看逻辑：
 
 1. 使用**字符串url**配置的处理
 	1. **字符串url**可能代表多个地址，使用；分割为数组
@@ -428,7 +572,7 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
             c = true; 
         }
         if (c && !invoker.isAvailable()) {
-            throw new IllegalStateException("Failed to check the status of the service " + interfaceName + ". No provider available for the service " + (group == null ? "" : group + "/") + interfaceName + (version == null ? "" : ":" + version) + " from the url " + invoker.getUrl() + " to the consumer " + NetUtils.getLocalHost() + " use dubbo version " + Version.getVersion());
+            //省略部分代码
         }
         
 代码也是很少，逻辑如下:
@@ -437,17 +581,14 @@ appendAttributes和appendParameters很相像，但做的事情却少多了
 2. check=true(check为空的情况下）
 3. 在check为true的情况下，会去验证服务的可用性
 
-
 第四点创建服务代理
 
 	return (T) proxyFactory.getProxy(invoker);
 
 这里的代理的创建，请见dubbo之创建代理一文。
 
-
 ### 小结 ###
 
-----------
-
-文章到这里，基本上介绍了下dubbo消费方的逻辑，当然还有很多细节没有描述到位，比如具体的网络暴露还是没有涉及。下一篇dubbo消费引用我们将展开细致的描述
+---
+文章到这里，基本上介绍了下dubbo消费方的逻辑，当然还有很多细节没有描述到位，比如具体的网络暴露还是没有涉及。下一篇dubbo消费引用我们将展开细致的描述。
 
