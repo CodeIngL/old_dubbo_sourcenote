@@ -20,34 +20,34 @@ Protocol$Adaptive,其实际做的事情我们应该也很清楚了，根据url�
 ---
 这个就是我们优先关注的对象，也就是注册中心配置类，可以通过消费方的属性url来配置，或者使用xml（spring来配置)
 
-		public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
-	        url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
-	        Registry registry = registryFactory.getRegistry(url);
-	        if (RegistryService.class.equals(type)) {
-	        	return proxyFactory.getInvoker((T) registry, type, url);
-	        }
-	        Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
-	        String group = qs.get(Constants.GROUP_KEY);
-	        if (group != null && group.length() > 0 ) {
-	            if ( ( Constants.COMMA_SPLIT_PATTERN.split( group ) ).length > 1
-	                    || "*".equals( group ) ) {
-	                return doRefer( getMergeableCluster(), registry, type, url );
-	            }
-	        }
-	        return doRefer(cluster, registry, type, url);
-	    }
+    public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
+        Registry registry = registryFactory.getRegistry(url);
+        if (RegistryService.class.equals(type)) {
+            return proxyFactory.getInvoker((T) registry, type, url);
+        }
+        Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
+        String group = qs.get(Constants.GROUP_KEY);
+        if (group != null && group.length() > 0 ) {
+            if ( ( Constants.COMMA_SPLIT_PATTERN.split( group ) ).length > 1
+                    || "*".equals( group ) ) {
+                return doRefer( getMergeableCluster(), registry, type, url );
+            }
+        }
+        return doRefer(cluster, registry, type, url);
+    }
 
 以上就是该方法的代码的实现，篇幅并不是很长，值得说明的是对于注册中心url，我们先前已经知道，在loadRegistry中其protocol都被设置为了registry，而
 真正的的注册中心协议被其转移到了参数信息中，也就是键为registry的键值对。整体代码逻辑如下:
 
 1. 处理url，我们上面已经提到过，这是为了转换回来真正的注册中心使用的协议，比如zookeeper。
 2. 根据真正的注册中心的url来获得相应的注册中心。比如zookeeper
-3. 如果type是RegistryService，获得invoker
+3. 如果type是RegistryService，获得invoker,因为本事就是注册中心，没有必要再做其他的操作
 4. 获得url中refer的键信息，也就是消费方的所有信息，上面我们说过，消费方所有信息都会转换为一个参数映射，构建成为url的一个参数的键值对。而不像
 服务方，构建了一个单独的url
-5. 获得group，
-6. 对应一个消费引用，如果他配置多个组，应该是使用不同的，聚集策略，这里使用mergeableCluster
-6. 如果只有一个组，那么使用本身cluster，里面会引向默认的聚集策略
+5. 获得group的信息。
+    1. 对应一个消费引用，如果他配置多个组，应该是使用不同的集群策略，这里使用mergeableCluster
+    2. 如果只有一个组，那么使用本身cluster，里面会引向默认的集群策略
 
 ### RegistryProtocol.doRefer ###
 
@@ -81,10 +81,43 @@ Protocol$Adaptive,其实际做的事情我们应该也很清楚了，根据url�
 
 逻辑说明如上，但是我相信读者肯定是一脸懵逼的感觉，这正验证了这里的逻辑的复杂性。我们慢慢展开其中的奥秘。当然如果读者看了我所提示的文章这里基本上没有什么问题了。
 
+### 第一点的介绍 ###
+
+---
+第一点也就是构建了注册中心目录服务，在消费方，有目录服务来辅助注册中心进行相关的操作通知和回调，这里我们需要细细的说明。
+
+### 第二点的介绍 ###
+
+---
+上述第一点构建了目录服务，该目录服务还没有设置某些特殊的属性，这里为目录服务设置了相应的注册中心实例，比如ZookeeperRegistry,这样目录服务就能通过注册中心做一些事情了。
+
+### 第三点的介绍 ###
+
+---
+第三点也就是设置了protocol，我们知道相关的protocol都是被容器自动注入进来的。这个没有什么好说的
+
+### 第三点的介绍 ###
+
+---
+上面的第三点，也就是构建一个需要被订阅的URL,这是一个比较关键的地方，我们要进行说明，这里我刚开始也踩了一个坑。 这里构建的url其协议是consumer，同时他的参数是消息引用接口的相关参数，同时里面去掉了监控相关的信息，重点是这个消息引用接口的相关参数，而不是注册中心的相关参数哦。
+
+### 第四点的介绍 ###
+
+---
+上面的第四点，也就是关于注册到注册中心上的操作，对于非泛化调用，且配置了需要注册的的信息，则注册中心需要将该订阅的URL注册到注册中心上，当然额外的添加了其他的信息。实际上也就是多了两个信息，用于说明其的目录，是否需要校验。
+
+### 第五点的介绍 ###
+
+---
+上面的第五点，订阅需要被订阅的url，这些url如何确定，通过前面的订阅url就能完成,只要订阅该url下目录为各种信息就可以了，也就是目录为providers,configurators,routers。其对应就是目录服务的的消费url，目录对这些url进行消费，同时使用注册中心对这个url进行订阅
+
 ### RegistryProtocol.refer的小结 ###
 
 ---
-到这里关于消费方注册中心的refer就到此为止了。但是关于网络这一块还是没有涉及，接下来我们针对其默认的DubboProtocol进行网络的展开
+到这里关于消费方注册中心的refer就到此为止了。也就是说如果开发者只在xml中配置了注册中心，那么整个消费暴露也就在这里完成了，
+读者肯定存在疑惑，服务方的暴露中除了注册中心，本身也暴露一个协议配置，比如dubbo。消费方好像看起来没有，怎么玩的转。
+
+事实上这就是我们本文要讲述的重点的知识，我们现在开始深入，这个默认的dubbo协议是怎么转出来的。
 
 ### DubboProtocol.refer ###
 
