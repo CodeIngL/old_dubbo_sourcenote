@@ -94,11 +94,6 @@ Protocol$Adaptive,其实际做的事情我们应该也很清楚了，根据url�
 ### 第三点的介绍 ###
 
 ---
-第三点也就是设置了protocol，我们知道相关的protocol都是被容器自动注入进来的。这个没有什么好说的
-
-### 第三点的介绍 ###
-
----
 上面的第三点，也就是构建一个需要被订阅的URL,这是一个比较关键的地方，我们要进行说明，这里我刚开始也踩了一个坑。 这里构建的url其协议是consumer，同时他的参数是消息引用接口的相关参数，同时里面去掉了监控相关的信息，重点是这个消息引用接口的相关参数，而不是注册中心的相关参数哦。
 
 ### 第四点的介绍 ###
@@ -110,6 +105,11 @@ Protocol$Adaptive,其实际做的事情我们应该也很清楚了，根据url�
 
 ---
 上面的第五点，订阅需要被订阅的url，这些url如何确定，通过前面的订阅url就能完成,只要订阅该url下目录为各种信息就可以了，也就是目录为providers,configurators,routers。其对应就是目录服务的的消费url，目录对这些url进行消费，同时使用注册中心对这个url进行订阅
+
+### 第六点的介绍 ###
+
+---
+这里就是第6点，对于多个组策略的使用的相应集群策略，对于消费接口属于多个引用和使用单个引用的接口会使用不同策略的集群方式来构造一个虚拟的invoker（调用者)
 
 ### RegistryProtocol.refer的小结 ###
 
@@ -130,7 +130,42 @@ Protocol$Adaptive,其实际做的事情我们应该也很清楚了，根据url�
         return invoker;
     }
 
-代码很简单，比之前的注册中心好很多，但是需要注意的地方却更多
+代码很简单，我们需要的注意的时，假设服务方使用了dubbo协议来暴露相应的服务接口，对于消费方，我们配置了注册中心就会自动引用服务方的这个dubbo协议以及相关参数来实现自动生成一个关于通信的DubboProtocol。
+
+至于这一点是怎么实现的，秘密就在消费方的目录服务中。
+
+### 消费方通过目录服务获取相应的通讯协议 ###
+
+---
+这是一个非常重要的一点，这里也是消费方最难的一个理解要点之一，我们现在对这个进行深入的研究。
+
+首先这里的相关的代码还是本文最上面关于**doRefer**代码，在doRefer中对于目录服务来说，对于接口传递进来的接口url信息，其会持有很多变种的信息，
+
+1. url属性，也就是转换过的注册中心url，包含消费方相关的参数(refer),以及监控相关
+    - 这里的转换的意思就是registry那个键转换为实际的协议，具体请看**refer**方法
+2. consumerUrl属性，其默认和url属性是一致的，当然这里对其做了重新设置，其被设置为**doRefer**中，局部变量subscribeUrl加上了目录参数
+    - 该属性代表了目录服务去消费的url信息（或者间接信息)
+3. directoryUrl属性，其代表了注册中心url和消费方接口信息的装换，也就是注册中心url将其path设置为接口的信息，参数信息被接口的信息给替换，移除监控相关的信息。
+4. overrideDirectoryUrl属性，默认和directoryUrl一致
+
+这里我们介绍了有目录服务持有的相关信息，但是和我们的展开还远着很，慢慢来，我们继续展开。
+
+关键点的步骤就出现在，注册中心的注册和目录服务的订阅上
+
+    registry.register(subscribeUrl.addParameters(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY, Constants.CHECK_KEY, String.valueOf(false)));
+    
+    directory.subscribe(subscribeUrl.addParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY + "," + Constants.CONFIGURATORS_CATEGORY + "," + Constants.ROUTERS_CATEGORY));
+
+也就是这两行关键代码上，这里面我们需要深入的了解才能知道，内部的秘密。
+
+首先是注册的关键，对主注册来说，会显得更简单，假定我们使用zookeeper，那么这里将会使将这个url添加见相应的缓存结构，然后组装成路径，写成为zknode。
+
+重点是比较中哟的订阅过程，这里简单将传递参数对目录服务的consumerUrl属性进行设置后，不再做任何处理
+然后委托给注册中心处理，
+
+    registry.subscribe(url, this);
+
+我们看到这行代码，我们发现，除了这个url以外还传递了一个this。注册中心目录服务本身就是一个监听。他对入参url也就是consumerUrl进行消费订阅。当然这里和真正订阅的url还是有稍微的区别，入参url会根据多其目录参数，形成多个真正的url，这些url最终形成zknode节点，当然this也就是目录服务也就是对这些zknode节点进行监听，在这些zknode节点的子节点发生变化时，使用zk的特性，进行回调处理，实现了this的监听处理。
 
 ### getClient网络展开 ###
 
