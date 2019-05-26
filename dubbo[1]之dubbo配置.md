@@ -1,24 +1,24 @@
-## dubbo配置
+# dubbo配置
 
-dubbo对我们来说是一款比较优秀的RPC框架(十分优秀)。对dubbo来说，其中分成了很多模块，有些模块不可否认写的很好，唯一遗憾的就是缺少注解说明。   
+dubbo对我们来说是一款比较优秀的RPC框架,现在也有人在维护。
 
 dubbo配置模块，是dubbo众多的模块之一，当然也是dubbo框架核心模块之一。  
 
 该篇文章作为dubbo源码分析的第一篇文章,我们将通过对配置模块的简单介绍来使读者由浅入深的接触整个dubbo源码。
 
->**tip**：***framework conf is not only for spring***  
->dubbo推荐结合spring来进行工作，但spring只是dubbo运行的壳子,其本身并不依赖spring
+> dubbo推荐使用spring来工作，spring不是dubbo的必须依赖
 
+## dubbo-config-api
 
-#### dubbo-config-api
 ---
+
 dubbo-config-api包是dubbo配置模块的子包，里面包含dubbo中的配置类。  
 
 对应配置类，读者首先必须有这样的概念：
 
-1. **配置类极有可能是单纯的POJO(拥有基础类型)**
+1. **配置类极有可能是单纯的POJO**
 
-2. **配置类也有可能嵌套配置类，本质是一个单纯的POJO**
+2. **配置类也有可能嵌套配置类，本质还是一个POJO**
 
 3. **配置类如果嵌套复杂的非配置属性，这个配置类一般是入口，或者辅助程序入口**
 
@@ -33,28 +33,22 @@ dubbo中唯一的两个**复杂配置类**，也正是dubbo服务，服务方和
 - ServiceConfig（服务方的入口）
 	- 提供者必须使用的配置类
 		- 复杂的非配置属性：
-			
 
-			  //Protocl$Adaptive单例唯一
 			  private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 			
-			  //ProxyFactory$Adaptive单例唯一
 			  private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
 - ReferenceConfig（消费方的入口）
 	- 消费者必须使用的配置类
 		- 复杂的非配置属性：
 				
-			  //Protocl$Adaptive单例唯一
 			  private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 				
-			  //Cluster$Adaptive单例唯一
 			  private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
 			    
-			  //ProxyFactory$Adaptive单例唯一
 			  private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
-读者请先**忽略**这些代码，只需要对这两个复杂配置类有所保留印象。详细的解释我们将会慢慢展开
+读者请先**忽略**上述代码，仅仅存有印象即可。详细的解释我们将会慢慢展开
 
 #### dubbo-api编码
 ---

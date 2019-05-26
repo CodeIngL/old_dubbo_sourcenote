@@ -72,7 +72,7 @@
 
 首先我们需要关注下**new RpcInvocation(method, args)**。 这个叫RpcInvocation是rpc调用对象，Invoker作为调用者对调用对象进行处理。
 
-最后开始我们的invoker调用之旅了，默认情况下，我们配置衣柜注册配置类，则不使用Cluster进行管理请求。所以
+最后开始我们的invoker调用之旅了，默认情况下，我们配置的是注册配置类，则不使用Cluster进行管理请求。所以
 
 
 
